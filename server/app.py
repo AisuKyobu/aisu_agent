@@ -544,7 +544,7 @@ async def list_workspace():
     return {"files": files}
 
 
-@app.get("/api/workspace/{filename}")
+@app.get("/api/workspace/{filename:path}")
 async def get_workspace(filename: str):
     return {"content": read_workspace_file(filename)}
 
