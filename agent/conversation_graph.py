@@ -121,7 +121,7 @@ def _load_system_prompt() -> str:
     return content if content else SYSTEM_PROMPT_DEFAULT
 
 _ctx = GraphContext(
-    llm=llm, llm_search=llm_search, llm_action=llm_action,
+    llm=llm_with_tools, llm_search=llm_search, llm_action=llm_action,
     llm_reasoning=llm_reasoning, llm_planning=llm_planning,
     llm_with_tools=llm_with_tools, workspace=_workspace,
     system_prompt=_load_system_prompt(),
