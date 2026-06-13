@@ -17,14 +17,21 @@ COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -i https://mirrors.aliyun.com/pypi/simple/ -r requirements.txt
 
-# Playwright 浏览器（使用官方 CDN）
-RUN --mount=type=cache,target=/root/.cache/pip \
-    playwright install chromium && \
-    playwright install-deps chromium
+# Playwright 浏览器：使用本地上传的 Chromium zip（避免 CDN 下载失败）
+COPY browsers/chrome-linux64.zip /tmp/chrome-linux64.zip
+RUN mkdir -p /opt/chromium && \
+    unzip /tmp/chrome-linux64.zip -d /opt/chromium && \
+    rm /tmp/chrome-linux64.zip && \
+    chmod +x /opt/chromium/chrome-linux/chrome
+
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/chromium/chrome-linux/chrome
+
+# 只安装浏览器系统依赖（不下载浏览器）
+RUN playwright install-deps chromium
 
 COPY . .
-
-RUN mkdir -p /app/data/workspace /app/data/sessions /app/data/memory /app/data/sandbox && \
+RUN rm -rf /app/browsers && \
+    mkdir -p /app/data/workspace /app/data/sessions /app/data/memory /app/data/sandbox && \
     chown -R 1000:1000 /app
 
 USER 1000:1000

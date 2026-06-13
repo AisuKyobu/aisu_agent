@@ -34,5 +34,8 @@ logs/
 Thumbs.db
 .DS_Store
 
+# Local browser binaries (large, not committed)
+browsers/*.zip
+
 # QQ Bot integration (excluded from public repo)
 aisu_bot/
