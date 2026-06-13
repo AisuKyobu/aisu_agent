@@ -47,6 +47,22 @@ def init_auth_db() -> None:
     conn.close()
 
 
+def ensure_default_admin() -> None:
+    import bcrypt
+    conn = _connect()
+    row = conn.execute("SELECT id FROM users WHERE username=?", ("admin",)).fetchone()
+    if not row:
+        uid = uuid.uuid4().hex
+        now = datetime.utcnow().timestamp()
+        pw = bcrypt.hashpw("admin123".encode(), bcrypt.gensalt()).decode()
+        conn.execute(
+            "INSERT INTO users (id, username, password_hash, email, email_verified, role, created_at) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (uid, "admin", pw, "", 1, "admin", now))
+        conn.commit()
+    conn.close()
+
+
 # ── User CRUD ──
 
 def create_user(username: str, password_hash: str, email: str = "") -> dict:

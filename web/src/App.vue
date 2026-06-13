@@ -18,7 +18,7 @@ const tabs = [
   { id: 'skills', label: '技能' },
   { id: 'workspace', label: '指令' },
   { id: 'cron', label: '定时' },
-  { id: 'settings', label: '设置' },
+  { id: 'settings', label: '设置', adminOnly: true },
 ] as const
 
 const activeTab = ref<string>('chat')
@@ -72,7 +72,7 @@ ws.on('limit_hit', (msg) => {
   <template v-else>
     <div class="tab-bar">
       <button
-        v-for="t in tabs" :key="t.id"
+        v-for="t in tabs.filter(x => !x.adminOnly || auth.user.value?.role === 'admin')" :key="t.id"
         class="tab-btn"
         :class="{ active: activeTab === t.id }"
         @click="activeTab = t.id"

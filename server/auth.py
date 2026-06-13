@@ -156,4 +156,6 @@ async def get_me(user: dict | None = Depends(get_current_user)):
 
 def install_auth(app):
     init_auth_db()
+    from server.db import ensure_default_admin
+    ensure_default_admin()
     app.include_router(router)
