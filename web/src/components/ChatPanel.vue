@@ -176,6 +176,11 @@ props.ws.on('error', (msg: any) => {
 })
 
 watch(msgs, scrollBottom, { deep: true })
+watch(() => auth.user.value, () => {
+  activeSid.value = ''
+  msgs.value = []
+  loadSessions()
+})
 onMounted(loadSessions)
 </script>
 
