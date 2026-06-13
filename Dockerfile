@@ -9,7 +9,7 @@ RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
       sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list; \
     fi && \
     apt-get update && apt-get install -y --no-install-recommends \
-    curl git && \
+    curl git unzip && \
     rm -rf /var/lib/apt/lists/*
 
 # pip 安装：使用 BuildKit 缓存挂载，避免每次重新下载包
