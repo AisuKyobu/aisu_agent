@@ -7,7 +7,7 @@ services:
     volumes:
       - aisu_data:/app/data
       - ./skills:/app/skills:ro
-      - ./workspace:/app/data/workspace:ro
+      - ./workspace:/app/data/workspace
     environment:
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}

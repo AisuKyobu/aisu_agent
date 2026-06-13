@@ -535,7 +535,13 @@ async def list_workspace():
     import os
     from config import WORKSPACE_DIR
     try:
-        files = [f.name for f in os.scandir(WORKSPACE_DIR) if f.is_file()]
+        files = []
+        for root, dirs, filenames in os.walk(WORKSPACE_DIR):
+            rel = os.path.relpath(root, WORKSPACE_DIR)
+            for fn in filenames:
+                rp = os.path.join(rel, fn) if rel != "." else fn
+                rp = rp.replace("\\", "/")
+                files.append(rp)
         return {"files": files}
     except Exception:
         return {"files": []}

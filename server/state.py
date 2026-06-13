@@ -153,21 +153,29 @@ def list_skills():
     return [{"name": s.name, "description": s.description, "enabled": reg.is_enabled(s.name)} for s in reg.list_all()]
 
 
+def _find_workspace_file(filename: str) -> str:
+    """在 WORKSPACE_DIR 子目录中递归查找文件，返回完整路径或空字符串"""
+    for root, dirs, files in os.walk(WORKSPACE_DIR):
+        for f in files:
+            if f == filename:
+                return os.path.join(root, f)
+    return ""
+
+
 def read_workspace_file(filename: str) -> str:
-    from tools.path_security import safe_join
-    try:
-        path = safe_join(WORKSPACE_DIR, filename)
-    except ValueError:
-        return ""
-    if not os.path.isfile(path):
-        return ""
-    return Path(path).read_text(encoding="utf-8")
+    path = _find_workspace_file(filename)
+    if path:
+        return Path(path).read_text(encoding="utf-8")
+    return ""
 
 
 def write_workspace_file(filename: str, content: str):
-    from tools.path_security import safe_join
-    os.makedirs(WORKSPACE_DIR, exist_ok=True)
-    path = safe_join(WORKSPACE_DIR, filename)
+    path = _find_workspace_file(filename)
+    if not path:
+        # 新文件写入 shared 目录
+        shared_dir = os.path.join(WORKSPACE_DIR, "shared")
+        os.makedirs(shared_dir, exist_ok=True)
+        path = os.path.join(shared_dir, os.path.basename(filename))
     Path(path).write_text(content, encoding="utf-8")
 
 
