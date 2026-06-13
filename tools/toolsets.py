@@ -68,17 +68,17 @@ TOOLSETS = {
     "action": {
         "description": "执行模式 — 文件 + 命令 + 浏览器 + 计划 + 记忆 + 定时 + 委派",
         "tools": [],
-        "includes": ["file", "command", "browser", "plan", "memory", "cron", "delegation"],
+        "includes": ["file", "command", "browser", "plan", "memory", "cron", "delegation", "skill", "session"],
     },
     "reasoning": {
         "description": "推理模式 — 搜索 + 文件 + 命令 + 截图",
         "tools": ["read_file", "run_command", "browser_screenshot"],
-        "includes": ["web"],
+        "includes": ["web", "skill", "session"],
     },
     "planning": {
         "description": "规划模式 — 计划 + 文件 + 命令 + 搜索 + 记忆",
         "tools": [],
-        "includes": ["plan", "file", "command", "web", "memory"],
+        "includes": ["plan", "file", "command", "web", "memory", "skill", "session"],
     },
 }
 

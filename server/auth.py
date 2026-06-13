@@ -9,8 +9,8 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from server.db import (create_user, create_verification_token, get_user_by_id,
-                        get_user_by_username, init_auth_db, verify_token)
+from server.db import (create_user, create_verification_token, get_pending_token_seconds,
+                       get_user_by_id, get_user_by_username, init_auth_db, verify_token)
 
 logger = logging.getLogger("aisu.auth")
 
@@ -85,21 +85,27 @@ async def register(request: Request):
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
-    jwt_token = create_jwt(user["id"], user["username"], user["role"])
+    # 无邮箱 → 直接登录
+    if not email:
+        jwt_token = create_jwt(user["id"], user["username"], user["role"])
+        return {"ok": True, "need_verify": False,
+                "token": jwt_token, "user": user, "message": "注册成功"}
 
-    if email:
-        token = secrets.token_urlsafe(32)
-        create_verification_token(user["id"], token, "verify_email")
-        from server.email import send_verification_email
-        email_sent = send_verification_email(email, user["username"], token)
-        if not email_sent:
-            logger.warning("Failed to send verification email to %s — SMTP may be misconfigured", email)
-            return {"token": jwt_token, "user": user, "email_sent": False,
-                    "message": "注册成功，但验证邮件发送失败。请检查 SMTP 配置。"}
-        return {"token": jwt_token, "user": user, "email_sent": True,
-                "message": "注册成功！验证邮件已发送，请前往邮箱完成验证。"}
+    # 有邮箱 → 发送验证邮件，不签发 JWT
+    elapsed = get_pending_token_seconds(user["id"], "verify_email")
+    if elapsed is not None and elapsed < 60:
+        raise HTTPException(status_code=429, detail=f"验证邮件已发送，请 {60 - elapsed} 秒后再试")
 
-    return {"token": jwt_token, "user": user}
+    token = secrets.token_urlsafe(32)
+    create_verification_token(user["id"], token, "verify_email")
+    from server.email import send_verification_email
+    email_sent = send_verification_email(email, user["username"], token)
+    if not email_sent:
+        logger.warning("Failed to send verification email to %s", email)
+        return {"ok": True, "need_verify": True,
+                "message": "注册成功，但验证邮件发送失败。请检查 SMTP 配置。"}
+    return {"ok": True, "need_verify": True,
+            "message": "注册成功！验证邮件已发送至 " + email + "，请前往邮箱完成验证后再登录。"}
 
 
 @router.post("/login")
@@ -117,6 +123,9 @@ async def login(request: Request):
 
     if not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
+
+    if user.get("email") and not user.get("email_verified"):
+        raise HTTPException(status_code=403, detail="请先验证邮箱后再登录。检查收件箱或垃圾邮件。")
 
     jwt_token = create_jwt(user["id"], user["username"], user["role"])
     return {

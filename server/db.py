@@ -74,11 +74,26 @@ def create_user(username: str, password_hash: str, email: str = "") -> dict:
             "INSERT INTO users (id, username, password_hash, email, created_at) VALUES (?,?,?,?,?)",
             (uid, username, password_hash, email, now))
         conn.commit()
-        return {"id": uid, "username": username, "email": email, "role": "user"}
+        return {"id": uid, "username": username, "email": email, "role": "user", "email_verified": 0}
     except sqlite3.IntegrityError:
-        raise ValueError("用户名或邮箱已存在")
+        pass
     finally:
         conn.close()
+    # 用户名或邮箱已存在 → 检查是否未验证，可以覆盖
+    existing = get_user_by_username(username)
+    if not existing and email:
+        existing = conn = _connect()
+        row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        conn.close()
+        existing = dict(row) if row else None
+    if existing and not existing.get("email_verified"):
+        conn = _connect()
+        conn.execute("DELETE FROM verification_tokens WHERE user_id=?", (existing["id"],))
+        conn.execute("DELETE FROM users WHERE id=?", (existing["id"],))
+        conn.commit()
+        conn.close()
+        return create_user(username, password_hash, email)
+    raise ValueError("用户名或邮箱已存在")
 
 
 def get_user_by_username(username: str) -> dict | None:
@@ -128,3 +143,18 @@ def verify_token(token: str, action: str = "verify_email") -> dict | None:
     conn.commit()
     conn.close()
     return user
+
+
+def get_pending_token_seconds(user_id: str, action: str = "verify_email") -> int | None:
+    """返回该用户最近一次验证 token 已过秒数；无未过期 token 返回 None"""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT expires_at FROM verification_tokens WHERE user_id=? AND action=? ORDER BY expires_at DESC LIMIT 1",
+        (user_id, action)).fetchone()
+    conn.close()
+    if not row:
+        return None
+    remaining = row["expires_at"] - datetime.utcnow().timestamp()
+    if remaining <= 0:
+        return None
+    return max(0, 3600 - int(remaining))

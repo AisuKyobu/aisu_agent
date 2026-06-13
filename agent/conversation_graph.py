@@ -91,14 +91,12 @@ _TOOLS_BY_MODE = {
     "reasoning": _TOOLS_REASONING,
     "planning": _TOOLS_PLANNING,
 }
-_SKILL_TOOLS = [t for t in TOOLS if t.name in ("list_skills", "load_skill")]
-_SESSION_TOOLS = [t for t in TOOLS if t.name in ("session_search", "session_list", "memory_search")]
 
 llm_with_tools = llm.bind_tools(TOOLS)
-llm_search = llm.bind_tools(_TOOLS_SEARCH + _SKILL_TOOLS + _SESSION_TOOLS)
-llm_action = llm.bind_tools(_TOOLS_ACTION + _SKILL_TOOLS + _SESSION_TOOLS)
-llm_reasoning = llm.bind_tools(_TOOLS_REASONING + _SKILL_TOOLS + _SESSION_TOOLS)
-llm_planning = llm.bind_tools(_TOOLS_PLANNING + _SKILL_TOOLS + _SESSION_TOOLS)
+llm_search = llm.bind_tools(_TOOLS_SEARCH)
+llm_action = llm.bind_tools(_TOOLS_ACTION)
+llm_reasoning = llm.bind_tools(_TOOLS_REASONING)
+llm_planning = llm.bind_tools(_TOOLS_PLANNING)
 
 SYSTEM_PROMPT_DEFAULT = """
 你是一个友好的对话助手，负责完成用户的任务。

@@ -55,7 +55,9 @@ export function useAuth() {
     })
     const data = await r.json()
     if (!r.ok) { error.value = data.detail || '注册失败'; return { ok: false, message: '' } }
-    setAuth(data)
+    if (!data.need_verify) {
+      setAuth(data)
+    }
     return { ok: true, message: data.message || '' }
   }
 
