@@ -2,11 +2,13 @@
 import { ref, nextTick, watch, onMounted } from 'vue'
 import { marked } from 'marked'
 import type { useWebSocket } from '../composables/useWebSocket'
+import { useAuth } from '../composables/useAuth'
 
 // 配置 marked: 不处理换行转 br (由 CSS white-space 处理)，代码块高亮
 marked.setOptions({ breaks: false, gfm: true })
 
 const props = defineProps<{ ws: ReturnType<typeof useWebSocket> }>()
+const auth = useAuth()
 
 interface Session { id: string; title: string; created_at?: number }
 interface Message { role: string; content: string; time?: string }
@@ -22,6 +24,10 @@ const renamingId = ref<string>('')
 const renameText = ref('')
 
 function now() { return new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) }
+function authHeaders(): Record<string, string> {
+  const t = auth.token()
+  return t ? { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` } : { 'Content-Type': 'application/json' }
+}
 
 function renderContent(text: string): string {
   if (!text) return ''
@@ -30,7 +36,7 @@ function renderContent(text: string): string {
 
 async function loadSessions() {
   try {
-    const r = await fetch('/api/sessions')
+    const r = await fetch('/api/sessions', { headers: authHeaders() })
     const data = await r.json()
     sessions.value = (data.sessions || []).sort((a: any, b: any) => (b.updated_at || 0) - (a.updated_at || 0))
   } catch {}
@@ -56,7 +62,7 @@ async function newSession() {
   try {
     const r = await fetch('/api/sessions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify({ title: '新对话' }),
     })
     const data = await r.json()
@@ -73,7 +79,7 @@ async function newSession() {
 
 async function deleteSession(sid: string) {
   try {
-    await fetch(`/api/sessions/${sid}`, { method: 'DELETE' })
+    await fetch(`/api/sessions/${sid}`, { method: 'DELETE', headers: authHeaders() })
     sessions.value = sessions.value.filter(s => s.id !== sid)
     if (activeSid.value === sid) { activeSid.value = ''; msgs.value = [] }
   } catch {}
@@ -94,7 +100,7 @@ async function commitRename(sid: string) {
     try {
       await fetch(`/api/sessions/${sid}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({ title }),
       })
       const s = sessions.value.find(x => x.id === sid)
