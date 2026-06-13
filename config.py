@@ -27,6 +27,7 @@ DATA_DIR = os.getenv("DATA_DIR", ".")
 WORKSPACE_DIR = os.path.join(DATA_DIR, "workspace")
 SESSION_DIR = os.path.join(DATA_DIR, "sessions")
 MEMORY_DIR = os.path.join(DATA_DIR, "memory")
+CONVERSATION_DB = os.path.join(DATA_DIR, "conversations.db")
 CRON_FILE = os.path.join(DATA_DIR, "cron_jobs.json")
 
 # ===== Skills =====

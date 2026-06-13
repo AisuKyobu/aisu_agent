@@ -172,7 +172,8 @@ def get_sub_app():
     if _sub_app_cache is None:
         import sqlite3
         from langgraph.checkpoint.sqlite import SqliteSaver
-        conn = sqlite3.connect("conversations.db", check_same_thread=False)
+        from config import CONVERSATION_DB
+        conn = sqlite3.connect(CONVERSATION_DB, check_same_thread=False)
         saver = SqliteSaver(conn)
         _sub_app_cache = build_conversation_graph(checkpointer=saver)
     return _sub_app_cache

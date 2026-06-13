@@ -31,7 +31,13 @@ const authPage = ref<string>('')
 
 onMounted(() => auth.fetchMe())
 
-watch(() => auth.user.value, (u) => { if (u) authPage.value = '' })
+watch(() => auth.user.value, (u) => {
+  if (u) authPage.value = ''
+  else {
+    const current = tabs.find(t => t.id === activeTab.value)
+    if (current && (current as any).adminOnly) activeTab.value = 'chat'
+  }
+})
 
 function addToast(type: string, text: string) {
   const id = ++_toastId

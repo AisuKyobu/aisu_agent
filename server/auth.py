@@ -85,13 +85,20 @@ async def register(request: Request):
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
+    jwt_token = create_jwt(user["id"], user["username"], user["role"])
+
     if email:
         token = secrets.token_urlsafe(32)
         create_verification_token(user["id"], token, "verify_email")
         from server.email import send_verification_email
-        send_verification_email(email, user["username"], token)
+        email_sent = send_verification_email(email, user["username"], token)
+        if not email_sent:
+            logger.warning("Failed to send verification email to %s — SMTP may be misconfigured", email)
+            return {"token": jwt_token, "user": user, "email_sent": False,
+                    "message": "注册成功，但验证邮件发送失败。请检查 SMTP 配置。"}
+        return {"token": jwt_token, "user": user, "email_sent": True,
+                "message": "注册成功！验证邮件已发送，请前往邮箱完成验证。"}
 
-    jwt_token = create_jwt(user["id"], user["username"], user["role"])
     return {"token": jwt_token, "user": user}
 
 

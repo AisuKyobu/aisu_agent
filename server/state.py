@@ -132,7 +132,8 @@ def delete_session(session_id: str) -> bool:
     # 清理 SQLite checkpoints
     try:
         import sqlite3
-        conn = sqlite3.connect("conversations.db")
+        from config import CONVERSATION_DB
+        conn = sqlite3.connect(CONVERSATION_DB)
         conn.execute("DELETE FROM checkpoints WHERE thread_id = ?", (session_id,))
         conn.execute("DELETE FROM writes WHERE thread_id = ?", (session_id,))
         conn.commit()

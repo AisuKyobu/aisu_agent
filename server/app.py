@@ -36,8 +36,8 @@ async def lifespan(app):
     import aiosqlite
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
     from agent.conversation_graph import build_conversation_graph
-
-    conn = await aiosqlite.connect("conversations.db")
+    from config import CONVERSATION_DB
+    conn = await aiosqlite.connect(CONVERSATION_DB)
     saver = AsyncSqliteSaver(conn)
     conv_app = build_conversation_graph(checkpointer=saver)
 
