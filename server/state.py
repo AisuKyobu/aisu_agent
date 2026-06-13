@@ -61,7 +61,7 @@ def _write_index(data: list):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def list_sessions() -> list[dict]:
+def list_sessions(user_id: str | None = None) -> list[dict]:
     index = _read_index()
     indexed_ids = {s["id"] for s in index}
 
@@ -75,20 +75,27 @@ def list_sessions() -> list[dict]:
                     orphan_ids.add(tid)
 
     for tid in sorted(orphan_ids):
-        # sub_/cron_/test_ 等内部会话不显示
         if tid.startswith("sub_") or tid.startswith("cron_") or tid.startswith("_") or tid.startswith("test"):
             continue
-        index.append({"id": tid, "title": tid, "created_at": 0})
+        index.append({"id": tid, "title": tid, "created_at": 0, "user_id": None})
     if orphan_ids:
         _write_index(index)
 
-    # 过滤：隐藏 sub_/cron_/_/test 等内部会话
-    return [s for s in index if not (
+    # 过滤内部会话
+    sessions = [s for s in index if not (
         s["id"].startswith("sub_") or
         s["id"].startswith("cron_") or
         s["id"].startswith("test") or
         s["id"].startswith("_")
     )]
+
+    # 按 user_id 隔离
+    if user_id is not None:
+        sessions = [s for s in sessions if s.get("user_id") == user_id]
+    else:
+        sessions = [s for s in sessions if s.get("user_id") is None]
+
+    return sessions
 
 
 def rename_session(session_id: str, title: str) -> bool:
@@ -101,12 +108,13 @@ def rename_session(session_id: str, title: str) -> bool:
     return False
 
 
-def create_session(title: str = "新对话") -> dict:
+def create_session(title: str = "新对话", user_id: str | None = None) -> dict:
     sessions = _read_index()
     session = {
         "id": uuid.uuid4().hex[:12],
         "title": title,
         "created_at": time.time(),
+        "user_id": user_id,
     }
     sessions.insert(0, session)
     _write_index(sessions)

@@ -9,7 +9,7 @@ import zipfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, Request, UploadFile, WebSocket, WebSocketDisconnect, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -28,6 +28,7 @@ from server.state import (get_app, list_cron_jobs, list_skills,
                            create_session, delete_session,
                            update_session_status, broadcast_monitor_update,
                            broadcast_monitor_async, get_sessions_with_status)
+from server.auth import get_current_user
 
 
 @asynccontextmanager
@@ -62,6 +63,9 @@ async def lifespan(app):
 
 
 app = FastAPI(title="Aisu", lifespan=lifespan)
+
+from server.auth import install_auth
+install_auth(app)
 
 # ── 静态资源 ──
 _STATIC_DIR = Path(__file__).parent / "static"
@@ -131,8 +135,9 @@ async def index(request: Request):
 # ── Sessions ──
 
 @app.get("/api/sessions")
-async def api_list_sessions():
-    return {"sessions": list_sessions()}
+async def api_list_sessions(user: dict | None = Depends(get_current_user)):
+    user_id = user["id"] if user else None
+    return {"sessions": list_sessions(user_id=user_id)}
 
 
 @app.get("/api/monitor/sessions")
@@ -141,8 +146,9 @@ async def api_monitor_sessions():
 
 
 @app.post("/api/sessions")
-async def api_create_session(data: SessionCreate):
-    session = create_session(data.title)
+async def api_create_session(data: SessionCreate, user: dict | None = Depends(get_current_user)):
+    user_id = user["id"] if user else None
+    session = create_session(data.title, user_id=user_id)
     return {"session": session}
 
 
