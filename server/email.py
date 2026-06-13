@@ -40,8 +40,7 @@ def send_verification_email(to_email: str, username: str, token: str) -> bool:
     msg.attach(MIMEText(html, "html", "utf-8"))
 
     try:
-        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15)
-        server.starttls()
+        server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15)
         server.login(SMTP_USER, SMTP_PASSWORD)
         server.sendmail(SMTP_USER, to_email, msg.as_string())
         server.quit()
