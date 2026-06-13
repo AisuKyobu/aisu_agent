@@ -142,13 +142,50 @@ async def login(request: Request):
 
 @router.get("/verify/{token}")
 async def verify_email_endpoint(token: str):
+    from fastapi.responses import HTMLResponse
+    from config import SITE_URL
+    home = SITE_URL.rstrip("/")
     try:
         user = verify_token(token, "verify_email")
         if not user:
-            raise HTTPException(status_code=404, detail="无效的验证令牌")
-        return {"ok": True, "message": "邮箱验证成功"}
+            return HTMLResponse(_verify_page("无效的验证令牌", "该链接无效，请检查是否完整复制。", home, False))
+        return HTMLResponse(_verify_page("邮箱验证成功", f"你好 {user['username']}，你的邮箱已验证通过。", home, True))
     except ValueError as e:
-        raise HTTPException(status_code=410, detail=str(e))
+        return HTMLResponse(_verify_page("验证链接已过期", str(e) + "，请重新注册以获取新的验证邮件。", home, False))
+
+
+def _verify_page(title: str, message: str, home_url: str, success: bool) -> str:
+    color = "#10b981" if success else "#ef4444"
+    icon = "✓" if success else "✗"
+    return f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{title}</title>
+<style>
+  * {{ margin:0; padding:0; box-sizing:border-box }}
+  body {{ display:flex; align-items:center; justify-content:center; min-height:100vh;
+         background:#0d1117; color:#c9d1d9; font-family:-apple-system,BlinkMacSystemFont,sans-serif }}
+  .card {{ background:#161b22; border:1px solid #30363d; border-radius:12px; padding:40px 48px;
+           text-align:center; max-width:420px; width:100% }}
+  .icon {{ font-size:48px; color:{color}; margin-bottom:16px }}
+  h1 {{ font-size:22px; margin-bottom:8px; color:{color} }}
+  p {{ color:#8b949e; font-size:14px; margin-bottom:28px; line-height:1.6 }}
+  a {{ display:inline-block; padding:10px 28px; background:{color}; color:#fff;
+       text-decoration:none; border-radius:6px; font-size:14px; transition:opacity .15s }}
+  a:hover {{ opacity:.85 }}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">{icon}</div>
+  <h1>{title}</h1>
+  <p>{message}</p>
+  <a href="{home_url}">返回网站首页</a>
+</div>
+</body>
+</html>"""
 
 
 @router.get("/me")
