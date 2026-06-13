@@ -74,10 +74,6 @@ _workspace = Workspace(WORKSPACE_DIR)
 
 llm = ChatDeepSeek(model=MODEL_NAME, temperature=TEMPERATURE, api_key=DEEPSEEK_API_KEY, api_base=DEEPSEEK_BASE_URL)
 
-_READONLY_TOOLS = [t for t in TOOLS if t.name in ("memory_search", "session_search")]
-
-llm = llm.bind_tools(_READONLY_TOOLS)
-
 _all_tools = get_all_tool_names()
 _search_tools = get_tool_names_for_task("search")
 _action_tools = get_tool_names_for_task("action")
@@ -96,7 +92,7 @@ _TOOLS_BY_MODE = {
     "planning": _TOOLS_PLANNING,
 }
 _SKILL_TOOLS = [t for t in TOOLS if t.name in ("list_skills", "load_skill")]
-_SESSION_TOOLS = [t for t in TOOLS if t.name in ("session_search", "session_list")]
+_SESSION_TOOLS = [t for t in TOOLS if t.name in ("session_search", "session_list", "memory_search")]
 
 llm_with_tools = llm.bind_tools(TOOLS)
 llm_search = llm.bind_tools(_TOOLS_SEARCH + _SKILL_TOOLS + _SESSION_TOOLS)

@@ -54,9 +54,9 @@ export function useAuth() {
       body: JSON.stringify({ username, password, email }),
     })
     const data = await r.json()
-    if (!r.ok) { error.value = data.detail || '注册失败'; return false }
+    if (!r.ok) { error.value = data.detail || '注册失败'; return { ok: false, message: '' } }
     setAuth(data)
-    return true
+    return { ok: true, message: data.message || '' }
   }
 
   function logout() {

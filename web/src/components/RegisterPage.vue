@@ -11,16 +11,18 @@ const password = ref('')
 const password2 = ref('')
 const loading = ref(false)
 const localError = ref('')
+const successMsg = ref('')
 
 async function doRegister() {
   localError.value = ''
+  successMsg.value = ''
   if (password.value !== password2.value) { localError.value = '两次密码不一致'; return }
   if (password.value.length < 6) { localError.value = '密码至少 6 个字符'; return }
   if (username.value.length < 3) { localError.value = '用户名至少 3 个字符'; return }
   loading.value = true
-  const ok = await auth.register(username.value, password.value, email.value)
+  const result = await auth.register(username.value, password.value, email.value)
   loading.value = false
-  if (!ok) return
+  if (result.ok && result.message) successMsg.value = result.message
 }
 </script>
 
@@ -42,6 +44,7 @@ async function doRegister() {
         <button type="submit" class="btn btn-primary" :disabled="loading">
           {{ loading ? '注册中...' : '注册' }}
         </button>
+        <p v-if="successMsg" class="auth-success">{{ successMsg }}</p>
       </form>
       <p class="auth-switch">
         已有账号？<a href="#" @click.prevent="emit('switchPage', 'login')">返回登录</a>
@@ -59,6 +62,7 @@ async function doRegister() {
 .auth-card input:focus { border-color:var(--pink) }
 .auth-card .btn { width:100%; margin-top:20px; padding:12px }
 .auth-error { color:#ff6b6b; font-size:13px; margin:12px 0 0 }
+.auth-success { color:#10b981; font-size:13px; margin:12px 0 0; background:rgba(16,185,129,.1); padding:8px 12px; border-radius:6px }
 .auth-switch { margin-top:16px; text-align:center; font-size:13px; color:var(--text-dim) }
 .auth-switch a { color:var(--pink) }
 </style>
