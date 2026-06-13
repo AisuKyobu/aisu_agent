@@ -98,6 +98,9 @@ llm_action = llm.bind_tools(_TOOLS_ACTION)
 llm_reasoning = llm.bind_tools(_TOOLS_REASONING)
 llm_planning = llm.bind_tools(_TOOLS_PLANNING)
 
+_READONLY_TOOLS = [t for t in TOOLS if t.name in ("memory_search", "session_search", "session_list")]
+llm_deterministic = llm.bind_tools(_READONLY_TOOLS)
+
 SYSTEM_PROMPT_DEFAULT = """
 你是一个友好的对话助手，负责完成用户的任务。
 
@@ -121,7 +124,7 @@ def _load_system_prompt() -> str:
     return content if content else SYSTEM_PROMPT_DEFAULT
 
 _ctx = GraphContext(
-    llm=llm_with_tools, llm_search=llm_search, llm_action=llm_action,
+    llm=llm_deterministic, llm_search=llm_search, llm_action=llm_action,
     llm_reasoning=llm_reasoning, llm_planning=llm_planning,
     llm_with_tools=llm_with_tools, workspace=_workspace,
     system_prompt=_load_system_prompt(),

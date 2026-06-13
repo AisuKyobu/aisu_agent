@@ -12,13 +12,26 @@ def invoke_with_retry(llm_instance, msgs, max_retries=3, label="LLM"):
     total_chars = sum(len(str(getattr(m, "content", ""))) for m in msgs if hasattr(m, "content"))
     _log.llm_start(label, total_chars)
     t0 = time.time()
+    last_result = None
     for attempt in range(max_retries):
         try:
             result = llm_instance.invoke(msgs)
             tools = []
             if hasattr(result, "tool_calls") and result.tool_calls:
                 tools = [tc.get("name","") if isinstance(tc, dict) else getattr(tc,"name","") for tc in result.tool_calls]
-            _log.llm_done(label, tools, chars=len(str(getattr(result, "content", ""))) if result else 0, duration=time.time()-t0)
+            content = str(getattr(result, "content", "")) if result else ""
+
+            # 检测 raw XML tool call 泄漏
+            _has_raw = ("<tool_calls>" in content or "<invoke" in content) and not tools
+            if _has_raw and attempt < max_retries - 1:
+                _log.warn(f"LLM raw XML tool call detected, retry {attempt + 1}")
+                # 标记以便调用方升级 task_type
+                if result and hasattr(result, "content"):
+                    setattr(result, "_raw_tool_call", True)
+                last_result = result
+                continue
+
+            _log.llm_done(label, tools, chars=len(content), duration=time.time()-t0)
             return result
         except Exception as e:
             sanitized = sanitize_tool_error(str(e))
@@ -27,7 +40,7 @@ def invoke_with_retry(llm_instance, msgs, max_retries=3, label="LLM"):
                 time.sleep(RETRY_DELAY * (attempt + 1))
             else:
                 return None
-    return None
+    return last_result
 
 
 def count_tool_calls(msgs: list, tool_names: tuple, per_turn: bool = True) -> int:

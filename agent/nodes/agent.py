@@ -155,6 +155,14 @@ def agent_node(state: AgentState, ctx) -> dict:
             if refl and refl.get("hint"): context.append(SystemMessage(content=refl["hint"]))
         except Exception: pass
 
+    # Plan A: 检查实际工具调用是否跨 toolset → 升级 task_type
+    _upgrade = _check_toolset_upgrade(state)
+    _task_type_changed = False
+    if _upgrade and tt and tt != "react":
+        _log.step_start(f"task_type upgrade: {tt} → {_upgrade}")
+        tt = _upgrade
+        _task_type_changed = True
+
     # LLM dispatch
     if tt == TaskType.DETERMINISTIC:
         response = invoke_with_retry(ctx.llm, context, label="agent(deterministic)")
@@ -168,6 +176,14 @@ def agent_node(state: AgentState, ctx) -> dict:
         response = invoke_with_retry(ctx.llm_planning, context, label="agent(planning)")
     else:
         response = invoke_with_retry(ctx.llm_with_tools, context, label="agent(default)")
+
+    # Plan B: raw XML tool call → 升级到全量工具重试一次
+    if response and getattr(response, "_raw_tool_call", False):
+        _log.warn("raw XML detected → upgrading to llm_with_tools, retry")
+        response = invoke_with_retry(ctx.llm_with_tools, context, label="agent(recovery)")
+        # 标记 task_type 升级，下轮 should_continue 不再踩坑
+        if response:
+            setattr(response, "_task_type_upgrade", "react")
 
     if response is None:
         return {"messages": [AIMessage(content="[系统错误] 网络请求失败，请稍后重试。")],
@@ -190,6 +206,14 @@ def agent_node(state: AgentState, ctx) -> dict:
         budget.update_real(response.response_metadata['token_usage'])
 
     updates = {"messages": [response], "current_step": state.get("current_step", 0) + 1}
+
+    # Plan A: 传播 task_type 升级
+    if _task_type_changed:
+        updates["task_type"] = tt
+
+    # Plan B: 传播 task_type 升级
+    if getattr(response, "_task_type_upgrade", ""):
+        updates["task_type"] = response._task_type_upgrade
 
     # ── Token 预算压缩：真实值优先 ──
     if budget.should_compress_real():
@@ -214,3 +238,25 @@ def agent_node(state: AgentState, ctx) -> dict:
 
     _log.debug(f"Agent done — compressed={len(updates.get('summary','')) > 0 if 'summary' in updates else False}")
     return updates
+
+
+def _check_toolset_upgrade(state: dict) -> str:
+    """检查实际工具调用是否超出当前 task_type 工具集，返回建议升级的 task_type"""
+    from tools.toolsets import get_tool_names_for_task
+    tt = state.get("task_type", "")
+    if not tt or tt == "react":
+        return ""
+    expected = set(get_tool_names_for_task(tt))
+    actual = set()
+    for m in state.get("messages", []):
+        if hasattr(m, "tool_calls") and m.tool_calls:
+            for tc in m.tool_calls:
+                n = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
+                if n:
+                    actual.add(n)
+    if not actual:
+        return ""
+    missing = actual - expected
+    if len(missing) >= max(1, len(actual) // 2):
+        return "action"
+    return ""
