@@ -12,13 +12,14 @@ RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
     curl git && \
     rm -rf /var/lib/apt/lists/*
 
-# pip 国内镜像
+# pip 安装：使用 BuildKit 缓存挂载，避免每次重新下载包
 COPY requirements.txt .
-RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ \
-    -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -i https://mirrors.aliyun.com/pypi/simple/ -r requirements.txt
 
 # Playwright 浏览器（使用官方 CDN）
-RUN playwright install chromium && \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    playwright install chromium && \
     playwright install-deps chromium
 
 COPY . .
