@@ -63,7 +63,11 @@ async def lifespan(app):
 
 app = FastAPI(title="Aisu", lifespan=lifespan)
 
-# ── Vue 3 SPA 静态资源 ──
+# ── 静态资源 ──
+_STATIC_DIR = Path(__file__).parent / "static"
+if _STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
 _VUE_DIST = Path(__file__).parent.parent / "web" / "dist"
 if _VUE_DIST.exists():
     app.mount("/assets", StaticFiles(directory=str(_VUE_DIST / "assets")), name="assets")
