@@ -1,3 +1,19 @@
+# ===== 阶段 1：构建 Vue 前端 =====
+FROM node:22-alpine AS frontend
+
+WORKDIR /src
+
+# npm 国内镜像
+RUN npm config set registry https://registry.npmmirror.com
+
+COPY web/package.json web/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm install
+
+COPY web/ ./
+RUN npm run build
+
+# ===== 阶段 2：Python 后端 =====
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -30,6 +46,9 @@ ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/chromium/chrome-linux64/chrome
 RUN playwright install-deps chromium
 
 COPY . .
+# 复制 Vue 构建产物，覆盖 web/dist/
+COPY --from=frontend /src/dist /app/web/dist
+
 RUN rm -rf /app/browsers && \
     mkdir -p /app/data/workspace /app/data/sessions /app/data/memory /app/data/sandbox && \
     chown -R 1000:1000 /app
