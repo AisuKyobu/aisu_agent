@@ -56,23 +56,57 @@ python main.py              # Web 管理面板 :7890
 
 ## Docker（推荐）
 
+### 1. 准备 Chromium 浏览器（Playwright）
+
+当前 `Dockerfile` 默认使用**本地上传的 Chromium zip**，避免在服务器上直接访问 Playwright CDN 失败。
+
+在项目根目录创建 `browsers/` 文件夹，放入下载好的 Linux 64 位 Chromium zip：
+
 ```bash
-# 一键启动 Aisu + SearXNG
-docker-compose up -d
+mkdir -p browsers
+cp /path/to/chrome-linux64.zip browsers/chrome-linux64.zip
+```
+
+> 如果你部署的服务器可以直接访问 Playwright CDN，也可以改用 CDN 自动下载。修改 `Dockerfile` 中浏览器安装部分：
+> ```dockerfile
+> # 改为 CDN 自动下载（需要服务器能访问 cdn.playwright.dev）
+> RUN playwright install chromium && playwright install-deps chromium
+> # 并删除本地 zip 相关 COPY 和解压步骤
+> ```
+
+### 2. 启动 Aisu + SearXNG
+
+```bash
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env，填入 DEEPSEEK_API_KEY
+
+# 构建并启动
+docker-compose up -d --build
 ```
 
 访问 http://localhost:7890
 
-单容器方式：
+### 3. 单容器方式
 
 ```bash
+# 确保 browsers/chrome-linux64.zip 已放入构建上下文
 docker build -t aisugent .
+
 docker run -d --name aisu -p 7890:7890 \
   -v aisu_data:/app/data \
-  -v %cd%/skills:/app/skills:ro \
+  -v $(pwd)/skills:/app/skills:ro \
   -e DEEPSEEK_API_KEY=sk-xxx \
   -e SEARXNG_BASE_URL=http://host.docker.internal:8888 \
   aisugent
+```
+
+### 4. 更新
+
+```bash
+git pull origin main
+docker-compose down
+docker-compose up -d --build
 ```
 
 ## 项目结构
