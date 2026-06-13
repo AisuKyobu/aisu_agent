@@ -154,10 +154,15 @@ def list_skills():
 
 
 def _find_workspace_file(filename: str) -> str:
-    """在 WORKSPACE_DIR 子目录中递归查找文件，返回完整路径或空字符串"""
+    """在 WORKSPACE_DIR 子目录中查找文件，支持纯文件名和相对路径"""
+    if "/" in filename or "\\" in filename:
+        path = os.path.join(WORKSPACE_DIR, filename.replace("\\", os.sep))
+        if os.path.isfile(path):
+            return path
+    basename = os.path.basename(filename)
     for root, dirs, files in os.walk(WORKSPACE_DIR):
         for f in files:
-            if f == filename:
+            if f == basename:
                 return os.path.join(root, f)
     return ""
 
