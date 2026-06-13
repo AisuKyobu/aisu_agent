@@ -21,11 +21,11 @@ services:
     image: searxng/searxng:latest
     container_name: searxng
     ports:
-      - "8888:8080"
+      - "8889:8080"
     volumes:
       - searxng_data:/etc/searxng
     environment:
-      - SEARXNG_BASE_URL=http://localhost:8888
+      - SEARXNG_BASE_URL=http://localhost:8889
     restart: unless-stopped
 
 volumes:
