@@ -88,8 +88,8 @@ async def register(request: Request):
     if email:
         token = secrets.token_urlsafe(32)
         create_verification_token(user["id"], token, "verify_email")
-        logger.info("Verification token for %s: %s", email, token)
-        logger.info("Verify URL: /api/auth/verify/%s", token)
+        from server.email import send_verification_email
+        send_verification_email(email, user["username"], token)
 
     jwt_token = create_jwt(user["id"], user["username"], user["role"])
     return {"token": jwt_token, "user": user}

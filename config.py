@@ -104,3 +104,10 @@ LANGCHAIN_ENDPOINT = os.getenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchai
 # ===== 日志 =====
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_NODE_VERBOSE = os.getenv("LOG_NODE_VERBOSE", "0") == "1"
+
+# ===== SMTP 邮件 =====
+SMTP_HOST = os.getenv("SMTP_HOST", "")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SITE_URL = os.getenv("SITE_URL", "http://localhost:7890")

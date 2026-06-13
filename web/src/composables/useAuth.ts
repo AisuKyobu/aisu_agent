@@ -8,12 +8,17 @@ export interface AuthUser {
   role: string
 }
 
-export function useAuth() {
-  const user = ref<AuthUser | null>(null)
-  const loading = ref(true)
-  const error = ref('')
+const user = ref<AuthUser | null>(null)
+const loading = ref(true)
+const error = ref('')
 
+export function useAuth() {
   const token = (): string | null => localStorage.getItem('aisu_token')
+
+  function setAuth(data: { token: string; user: AuthUser }) {
+    localStorage.setItem('aisu_token', data.token)
+    user.value = data.user
+  }
 
   async function fetchMe() {
     loading.value = true
@@ -24,9 +29,8 @@ export function useAuth() {
       const data = await r.json()
       if (data.authenticated) user.value = data.user
       else { user.value = null; localStorage.removeItem('aisu_token') }
-    } catch {
-      user.value = null
-    } finally { loading.value = false }
+    } catch { user.value = null }
+    finally { loading.value = false }
   }
 
   async function login(username: string, password: string) {
@@ -38,8 +42,7 @@ export function useAuth() {
     })
     const data = await r.json()
     if (!r.ok) { error.value = data.detail || '登录失败'; return false }
-    localStorage.setItem('aisu_token', data.token)
-    user.value = data.user
+    setAuth(data)
     return true
   }
 
@@ -52,8 +55,7 @@ export function useAuth() {
     })
     const data = await r.json()
     if (!r.ok) { error.value = data.detail || '注册失败'; return false }
-    localStorage.setItem('aisu_token', data.token)
-    user.value = data.user
+    setAuth(data)
     return true
   }
 
