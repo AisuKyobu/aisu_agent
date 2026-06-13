@@ -1,0 +1,10 @@
+__pycache__
+*.pyc
+.env
+.git
+.gitignore
+.vscode
+.venv
+*.db-shm
+*.db-wal
+node_modules

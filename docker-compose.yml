@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  aisu:
+    build: .
+    container_name: aisu
+    ports:
+      - "7890:7890"
+    volumes:
+      - aisu_data:/app/data
+      - ./skills:/app/skills:ro
+      - ./workspace:/app/workspace:ro
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - SEARXNG_BASE_URL=http://searxng:8080
+      - MODEL_NAME=${MODEL_NAME:-deepseek-chat}
+      - DATA_DIR=/app/data
+    depends_on:
+      - searxng
+    restart: unless-stopped
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    ports:
+      - "8888:8080"
+    volumes:
+      - searxng_data:/etc/searxng
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8888
+    restart: unless-stopped
+
+volumes:
+  aisu_data:
+  searxng_data:
