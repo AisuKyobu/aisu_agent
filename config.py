@@ -7,6 +7,9 @@ load_dotenv()
 
 # ===== DeepSeek 配置 =====
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+if not DEEPSEEK_API_KEY:
+    raise RuntimeError("DEEPSEEK_API_KEY environment variable is required but not set")
+
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
 
 MODEL_NAME = os.getenv("MODEL_NAME", "deepseek-chat")
@@ -46,7 +49,7 @@ WEB_PORT = 7890
 BROWSER_HEADLESS = True
 
 # ===== 沙箱 =====
-SANDBOX_MODE = "host"  # host | docker（默认 docker，阻止命令绝对路径越狱）
+SANDBOX_MODE = os.getenv("SANDBOX_MODE", "host")  # host | docker（默认 host，Docker 中可设为 docker）
 SANDBOX_IMAGE = "alpine:latest"
 
 # ===== 工具权限 =====

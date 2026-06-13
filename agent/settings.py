@@ -10,9 +10,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from config import DATA_DIR
-
-WORKSPACE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "workspace")
+from config import WORKSPACE_DIR
 
 _DEFAULTS = {
     "MAX_STEPS": 20,

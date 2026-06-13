@@ -14,6 +14,10 @@ services:
       - SEARXNG_BASE_URL=http://searxng:8080
       - MODEL_NAME=${MODEL_NAME:-deepseek-chat}
       - DATA_DIR=/app/data
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY:-}
+      - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT:-aisu}
+      - LANGCHAIN_ENDPOINT=${LANGCHAIN_ENDPOINT:-https://api.smith.langchain.com}
     depends_on:
       - searxng
     restart: unless-stopped

@@ -16,7 +16,7 @@ build/
 *.db-shm
 *.db-wal
 conversations.db
-memory/
+/memory/
 sessions/
 sandbox/
 plan.json

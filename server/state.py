@@ -13,8 +13,6 @@ from agent.logger import NodeLogger
 
 _log = NodeLogger("state")
 
-from config import SESSION_DIR
-
 _APP = None
 _SESSION_INDEX = os.path.join(SESSION_DIR, "_index.json")
 
