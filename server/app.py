@@ -534,17 +534,14 @@ async def install_skills_zip(file: UploadFile = File(...)):
 async def list_workspace():
     import os
     from config import WORKSPACE_DIR
-    try:
-        files = []
-        for root, dirs, filenames in os.walk(WORKSPACE_DIR):
-            rel = os.path.relpath(root, WORKSPACE_DIR)
-            for fn in filenames:
-                rp = os.path.join(rel, fn) if rel != "." else fn
-                rp = rp.replace("\\", "/")
-                files.append(rp)
-        return {"files": files}
-    except Exception:
-        return {"files": []}
+    files = []
+    for root, dirs, filenames in os.walk(WORKSPACE_DIR):
+        rel = os.path.relpath(root, WORKSPACE_DIR)
+        for fn in filenames:
+            rp = os.path.join(rel, fn) if rel != "." else fn
+            rp = rp.replace("\\", "/")
+            files.append(rp)
+    return {"files": files}
 
 
 @app.get("/api/workspace/{filename}")
