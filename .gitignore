@@ -33,3 +33,6 @@ logs/
 # OS
 Thumbs.db
 .DS_Store
+
+# QQ Bot integration (excluded from public repo)
+aisu_bot/

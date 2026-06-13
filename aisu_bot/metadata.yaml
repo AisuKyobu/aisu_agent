@@ -1,6 +1,0 @@
-name: aisu-agent
-display_name: Aisu AI助手
-desc: 基于 LangGraph 的个人 AI 助手，支持文件/Web/浏览器/定时等操作
-version: v1.0.0
-author: AisuKyobu
-repo: ""
