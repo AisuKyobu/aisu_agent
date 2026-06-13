@@ -17,8 +17,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ \
     -r requirements.txt
 
-# Playwright 浏览器 + 国内 CDN 镜像
-ENV PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright
+# Playwright 浏览器（使用官方 CDN）
 RUN playwright install chromium && \
     playwright install-deps chromium
 
