@@ -47,11 +47,11 @@ def agent_node(state: AgentState, ctx) -> dict:
 
     context_length = _get_setting("CONTEXT_LENGTH", 128000, profile=_profile)
     budget = get_budget(session_id=tid, context_length=context_length)
+
+    valid_tools = registry.get_all_tool_names()
     budget.estimate(messages, tools_count=len(valid_tools))
 
     _log.step_start(f"Agent({tt or '?'}) step={state.get('current_step',0)}/{state.get('max_steps','?')} msgs={len(messages)} est={budget._rough_estimate}")
-
-    valid_tools = registry.get_all_tool_names()
     _cache_key = state.get("current_step", 0)
 
     if _cache_key == 0 or _cache_key not in _prompt_cache:
