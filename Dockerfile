@@ -22,9 +22,9 @@ COPY browsers/chrome-linux64.zip /tmp/chrome-linux64.zip
 RUN mkdir -p /opt/chromium && \
     unzip /tmp/chrome-linux64.zip -d /opt/chromium && \
     rm /tmp/chrome-linux64.zip && \
-    chmod +x /opt/chromium/chrome-linux/chrome
+    chmod +x /opt/chromium/chrome-linux64/chrome
 
-ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/chromium/chrome-linux/chrome
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/chromium/chrome-linux64/chrome
 
 # 只安装浏览器系统依赖（不下载浏览器）
 RUN playwright install-deps chromium
