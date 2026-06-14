@@ -31,8 +31,12 @@ class MemoryManager:
 
     def ensure_builtin(self, profile: str = "dev") -> MemoryProvider:
         existing = self.builtin
-        if existing:
+        if existing and getattr(existing, "_profile", None) == profile:
             return existing
+        if existing and getattr(existing, "_profile", None) != profile:
+            existing.shutdown()
+            self._providers = [p for p in self._providers if p is not existing]
+            logger.info("Switched memory profile: %s → %s", getattr(existing, "_profile", "?"), profile)
         from agent.memory.store import MemoryStore
         store = MemoryStore()
         store.initialize(profile=profile)

@@ -53,7 +53,8 @@ def test_memory_remember_and_search(monkeypatch):
 
 # ── Plan ──
 def test_plan_create_and_complete():
-    from tools.plan_tools import plan_task, step_complete, load_plan
+    from tools.plan_tools import plan_task, step_complete, load_plan, set_plan_thread_id
+    set_plan_thread_id("")
     if os.path.exists("plan.json"):
         os.remove("plan.json")
     try:

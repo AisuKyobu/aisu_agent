@@ -3,12 +3,12 @@
 from langchain_core.messages import HumanMessage
 from langchain_deepseek import ChatDeepSeek
 
-from config import DEEPSEEK_API_KEY, MODEL_NAME
+from config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, MODEL_NAME
 from agent.logger import NodeLogger
 
 _log = NodeLogger("classifier")
 
-_llm = ChatDeepSeek(model=MODEL_NAME, temperature=0, api_key=DEEPSEEK_API_KEY)
+_llm = ChatDeepSeek(model=MODEL_NAME, temperature=0, api_key=DEEPSEEK_API_KEY, api_base=DEEPSEEK_BASE_URL)
 
 
 def classify(user_message: str) -> dict:

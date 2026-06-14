@@ -25,4 +25,5 @@ def analyzer_node(state: AgentState, ctx=None) -> dict:
         "task_type": intent.get("task_type", "reasoning"),
         "missing_params": intent.get("missing_params", []),
         "current_step": 0,
+        "needs_human": False,
     }

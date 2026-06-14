@@ -214,6 +214,8 @@ class ToolRegistry:
             return f'{{"error": "Unknown tool: {name}"}}'
         try:
             args = _coerce_tool_args(name, args, entry)
+            if isinstance(args, dict):
+                return entry.handler(**args, **kwargs)
             return entry.handler(args, **kwargs)
         except Exception as e:
             from tools.error_sanitizer import sanitize_tool_error

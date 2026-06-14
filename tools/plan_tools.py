@@ -1,5 +1,6 @@
 import json
 import os
+import threading
 
 from langchain.tools import tool
 
@@ -7,6 +8,16 @@ from config import DATA_DIR
 from tools.tool_registry import registry
 
 PLAN_FILE = os.path.join(DATA_DIR, "plan.json")
+
+_plan_context = threading.local()
+
+
+def set_plan_thread_id(thread_id: str):
+    _plan_context.thread_id = thread_id
+
+
+def _current_thread_id() -> str:
+    return getattr(_plan_context, "thread_id", "")
 
 
 def _plan_path(thread_id: str = "") -> str:
@@ -79,14 +90,14 @@ def plan_task(goal: str, steps: list[str]) -> str:
         "completed": [],
         "task_graph": task_graph,
     }
-    save_plan(plan)
+    save_plan(plan, thread_id=_current_thread_id())
     return f"计划已创建：\n{format_plan(plan)}"
 
 
 @tool
 def step_complete(step_index: int, result: str) -> str:
     """标记一个步骤已完成。step_index从0开始，result是该步骤的执行结果摘要。"""
-    plan = load_plan()
+    plan = load_plan(thread_id=_current_thread_id())
     if not plan.get("steps"):
         return "当前没有进行中的计划"
 
@@ -96,7 +107,7 @@ def step_complete(step_index: int, result: str) -> str:
 
     all_done = len(completed) == len(plan["steps"])
 
-    save_plan(plan)
+    save_plan(plan, thread_id=_current_thread_id())
 
     msg = f"步骤 {step_index+1} 已完成"
     if all_done:

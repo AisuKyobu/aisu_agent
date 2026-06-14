@@ -5,12 +5,12 @@ from typing import Any
 
 from langchain_deepseek import ChatDeepSeek
 
-from config import DEEPSEEK_API_KEY, MODEL_NAME
+from config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, MODEL_NAME
 from agent.logger import NodeLogger
 
 _log = NodeLogger("verifier_rules")
 
-_verifier_llm = ChatDeepSeek(model=MODEL_NAME, temperature=0, api_key=DEEPSEEK_API_KEY)
+_verifier_llm = ChatDeepSeek(model=MODEL_NAME, temperature=0, api_key=DEEPSEEK_API_KEY, api_base=DEEPSEEK_BASE_URL)
 
 # ── L1 规则：基于输出文本模式判断工具是否真的执行成功 ──
 

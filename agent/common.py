@@ -72,7 +72,7 @@ def context_refresh(goal: str, recent_msgs: list, summary: str, verification_log
     - 已有 summary
     """
     from langchain_deepseek import ChatDeepSeek
-    from config import DEEPSEEK_API_KEY, MODEL_NAME
+    from config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, MODEL_NAME
 
     # 提取关键信息
     last5 = recent_msgs[-5:]
@@ -96,7 +96,7 @@ def context_refresh(goal: str, recent_msgs: list, summary: str, verification_log
 
 输出一段摘要："""
     try:
-        llm = ChatDeepSeek(model=MODEL_NAME, temperature=0, api_key=DEEPSEEK_API_KEY)
+        llm = ChatDeepSeek(model=MODEL_NAME, temperature=0, api_key=DEEPSEEK_API_KEY, api_base=DEEPSEEK_BASE_URL)
         result = invoke_with_retry(llm, [HumanMessage(content=prompt)], label="context_refresh")
         new_summary = result.content if result and hasattr(result, "content") else summary
         # 构建精简上下文

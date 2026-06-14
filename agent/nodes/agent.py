@@ -14,7 +14,7 @@ from agent.state import AgentState
 from agent.system_prompt import build_system_prompt, join_prompt_parts
 from agent.types import TaskType
 from config import REASONING_MAX_FILE_READS, REASONING_MAX_SEARCH, REASONING_MAX_TOOL_CALLS
-from tools.plan_tools import format_plan, format_task_graph, load_plan, load_task_graph
+from tools.plan_tools import format_plan, format_task_graph, load_plan, load_task_graph, set_plan_thread_id
 from tools.tool_registry import registry
 
 
@@ -33,6 +33,7 @@ def agent_node(state: AgentState, ctx) -> dict:
     _log = NodeLogger("agent")
     summary = state.get("summary", "")
     tid = state.get("thread_id", "")
+    set_plan_thread_id(tid)
     _log.bind(tid, state.get("current_step", 0))
     plan_data = load_plan(tid)
     plan = format_plan(plan_data)
