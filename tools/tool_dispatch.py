@@ -1,11 +1,11 @@
 """并行工具调度门控 — 判断一批 tool_calls 能否安全并发。"""
 
-_NEVER_PARALLEL_TOOLS = frozenset({"clarify"})
+_NEVER_PARALLEL_TOOLS = frozenset()
 
 _PARALLEL_SAFE_TOOLS = frozenset({
-    "read_file", "search_files", "web_search", "web_fetch",
+    "read_file", "web_search", "web_fetch",
     "session_search", "session_list", "memory_search",
-    "list_skills", "skill_view", "browser_screenshot", "browser_inspect",
+    "list_skills", "browser_screenshot", "browser_inspect",
     "delegate_task",
 })
 

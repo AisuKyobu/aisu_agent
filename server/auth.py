@@ -3,7 +3,7 @@
 import logging
 import os
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import bcrypt
@@ -43,8 +43,8 @@ def create_jwt(user_id: str, username: str, role: str) -> str:
         "sub": user_id,
         "username": username,
         "role": role,
-        "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS),
-        "iat": datetime.utcnow(),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRE_HOURS),
+        "iat": datetime.now(timezone.utc),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 

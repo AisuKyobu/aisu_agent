@@ -3,12 +3,16 @@
 import os
 import sqlite3
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from config import DATA_DIR
 
 os.makedirs(DATA_DIR, exist_ok=True)
 DB_PATH = os.path.join(DATA_DIR, "auth.db")
+
+
+def _now_ts() -> float:
+    return datetime.now(timezone.utc).timestamp()
 
 
 def _connect() -> sqlite3.Connection:
@@ -53,7 +57,7 @@ def ensure_default_admin() -> None:
     row = conn.execute("SELECT id FROM users WHERE username=?", ("admin",)).fetchone()
     if not row:
         uid = uuid.uuid4().hex
-        now = datetime.utcnow().timestamp()
+        now = _now_ts()
         pw = bcrypt.hashpw("admin123".encode(), bcrypt.gensalt()).decode()
         conn.execute(
             "INSERT INTO users (id, username, password_hash, email, email_verified, role, created_at) "
@@ -68,7 +72,7 @@ def ensure_default_admin() -> None:
 def create_user(username: str, password_hash: str, email: str = "") -> dict:
     conn = _connect()
     uid = uuid.uuid4().hex
-    now = datetime.utcnow().timestamp()
+    now = _now_ts()
     try:
         conn.execute(
             "INSERT INTO users (id, username, password_hash, email, created_at) VALUES (?,?,?,?,?)",
@@ -115,7 +119,7 @@ def get_user_by_id(user_id: str) -> dict | None:
 def create_verification_token(user_id: str, token: str, action: str = "verify_email") -> None:
     conn = _connect()
     vid = uuid.uuid4().hex
-    expires = datetime.utcnow().timestamp() + 3600  # 1 hour
+    expires = _now_ts() + 3600  # 1 hour
     conn.execute(
         "INSERT INTO verification_tokens (id, user_id, token, action, expires_at) VALUES (?,?,?,?,?)",
         (vid, user_id, token, action, expires))
@@ -131,7 +135,7 @@ def verify_token(token: str, action: str = "verify_email") -> dict | None:
     if not row:
         conn.close()
         return None
-    if row["expires_at"] < datetime.utcnow().timestamp():
+    if row["expires_at"] < _now_ts():
         conn.execute("DELETE FROM verification_tokens WHERE token=?", (token,))
         conn.commit()
         conn.close()
@@ -154,7 +158,7 @@ def get_pending_token_seconds(user_id: str, action: str = "verify_email") -> int
     conn.close()
     if not row:
         return None
-    remaining = row["expires_at"] - datetime.utcnow().timestamp()
+    remaining = row["expires_at"] - _now_ts()
     if remaining <= 0:
         return None
     return max(0, 3600 - int(remaining))

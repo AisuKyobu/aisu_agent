@@ -5,7 +5,6 @@ from langchain_core.messages import AIMessage, RemoveMessage, SystemMessage
 
 from agent.common import (context_refresh, invoke_with_retry)
 from agent.compressor import compress_messages_structured, get_budget
-from agent.iteration_budget import IterationBudget
 from agent.logger import NodeLogger
 from agent.core.reflector import REFLECT_INTERVAL, reflect as run_reflection
 from agent.core.scheduler import (build_scoped_context, format_hint, scheduler_dispatch)
