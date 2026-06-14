@@ -98,6 +98,23 @@ def list_sessions(user_id: str | None = None) -> list[dict]:
     return sessions
 
 
+def get_session_owner(session_id: str) -> str | None:
+    """返回会话的 user_id，不存在返回 None"""
+    index = _read_index()
+    for s in index:
+        if s["id"] == session_id:
+            return s.get("user_id")
+    return None
+
+
+def check_session_access(session_id: str, user_id: str | None) -> bool:
+    """检查用户是否有权访问该会话"""
+    owner = get_session_owner(session_id)
+    if owner is None and user_id is None:
+        return True
+    return owner == user_id
+
+
 def rename_session(session_id: str, title: str) -> bool:
     sessions = _read_index()
     for s in sessions:
@@ -166,6 +183,9 @@ def _find_workspace_file(filename: str) -> str:
     """在 WORKSPACE_DIR 子目录中查找文件，支持纯文件名和相对路径"""
     if "/" in filename or "\\" in filename:
         path = os.path.join(WORKSPACE_DIR, filename.replace("\\", os.sep))
+        path = os.path.normpath(path)
+        if not path.startswith(os.path.normpath(WORKSPACE_DIR) + os.sep) and path != os.path.normpath(WORKSPACE_DIR):
+            return ""
         if os.path.isfile(path):
             return path
     basename = os.path.basename(filename)
@@ -186,10 +206,10 @@ def read_workspace_file(filename: str) -> str:
 def write_workspace_file(filename: str, content: str):
     path = _find_workspace_file(filename)
     if not path:
-        # 新文件写入 shared 目录
         shared_dir = os.path.join(WORKSPACE_DIR, "shared")
         os.makedirs(shared_dir, exist_ok=True)
-        path = os.path.join(shared_dir, os.path.basename(filename))
+        safe_name = os.path.basename(filename)
+        path = os.path.join(shared_dir, safe_name)
     Path(path).write_text(content, encoding="utf-8")
 
 

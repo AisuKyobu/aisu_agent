@@ -18,7 +18,7 @@ from agent.sub_agent import spawn_sub_agent
 from agent.workspace import Workspace
 from config import (DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, MODEL_NAME, TEMPERATURE, WORKSPACE_DIR)
 from tools.tool_dispatch import should_parallelize_tool_batch
-from tools.registry import TOOLS
+from tools.registry import get_filtered_tools
 from tools.tool_registry import registry as tool_registry
 from tools.toolsets import get_tool_names_for_task, get_all_tool_names
 
@@ -74,16 +74,17 @@ _workspace = Workspace(WORKSPACE_DIR)
 
 llm = ChatDeepSeek(model=MODEL_NAME, temperature=TEMPERATURE, api_key=DEEPSEEK_API_KEY, api_base=DEEPSEEK_BASE_URL)
 
+_FILTERED_TOOLS = get_filtered_tools()
 _all_tools = get_all_tool_names()
 _search_tools = get_tool_names_for_task("search")
 _action_tools = get_tool_names_for_task("action")
 _reasoning_tools = get_tool_names_for_task("reasoning")
 _planning_tools = get_tool_names_for_task("planning")
 
-_TOOLS_SEARCH = [t for t in TOOLS if t.name in _search_tools]
-_TOOLS_ACTION = [t for t in TOOLS if t.name in _action_tools]
-_TOOLS_REASONING = [t for t in TOOLS if t.name in _reasoning_tools]
-_TOOLS_PLANNING = [t for t in TOOLS if t.name in _planning_tools]
+_TOOLS_SEARCH = [t for t in _FILTERED_TOOLS if t.name in _search_tools]
+_TOOLS_ACTION = [t for t in _FILTERED_TOOLS if t.name in _action_tools]
+_TOOLS_REASONING = [t for t in _FILTERED_TOOLS if t.name in _reasoning_tools]
+_TOOLS_PLANNING = [t for t in _FILTERED_TOOLS if t.name in _planning_tools]
 
 _TOOLS_BY_MODE = {
     "search": _TOOLS_SEARCH,
@@ -92,13 +93,13 @@ _TOOLS_BY_MODE = {
     "planning": _TOOLS_PLANNING,
 }
 
-llm_with_tools = llm.bind_tools(TOOLS)
+llm_with_tools = llm.bind_tools(_FILTERED_TOOLS)
 llm_search = llm.bind_tools(_TOOLS_SEARCH)
 llm_action = llm.bind_tools(_TOOLS_ACTION)
 llm_reasoning = llm.bind_tools(_TOOLS_REASONING)
 llm_planning = llm.bind_tools(_TOOLS_PLANNING)
 
-_READONLY_TOOLS = [t for t in TOOLS if t.name in ("memory_search", "session_search", "session_list")]
+_READONLY_TOOLS = [t for t in _FILTERED_TOOLS if t.name in ("memory_search", "session_search", "session_list")]
 llm_deterministic = llm.bind_tools(_READONLY_TOOLS)
 
 SYSTEM_PROMPT_DEFAULT = """
@@ -137,7 +138,7 @@ def build_conversation_graph(checkpointer=None, **_):
     graph.add_node("router", lambda s: router_node(s, _ctx))
     graph.add_node("memory_retriever", lambda s: memory_retriever_node(s, _ctx))
     graph.add_node("agent", lambda s: agent_node(s, _ctx))
-    graph.add_node("tools", ParallelToolNode(TOOLS))
+    graph.add_node("tools", ParallelToolNode(_FILTERED_TOOLS))
     graph.add_node("skill_loader", lambda s: skill_loader_node(s, _ctx))
     graph.add_node("verifier", lambda s: verifier_node(s, _ctx))
     graph.add_node("summarizer", lambda s: summarizer_node(s, _ctx))

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, onMounted } from 'vue'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import type { useWebSocket } from '../composables/useWebSocket'
 import { useAuth } from '../composables/useAuth'
 
@@ -31,7 +32,8 @@ function authHeaders(): Record<string, string> {
 
 function renderContent(text: string): string {
   if (!text) return ''
-  return marked.parse(text) as string
+  const html = marked.parse(text) as string
+  return DOMPurify.sanitize(html)
 }
 
 async function loadSessions() {

@@ -27,8 +27,9 @@ from server.state import (get_app, list_cron_jobs, list_skills,
                            write_workspace_file, list_sessions,
                            create_session, delete_session,
                            update_session_status, broadcast_monitor_update,
-                           broadcast_monitor_async, get_sessions_with_status)
-from server.auth import get_current_user
+                           broadcast_monitor_async, get_sessions_with_status,
+                           get_session_owner, check_session_access)
+from server.auth import get_current_user, require_user, decode_jwt
 
 
 @asynccontextmanager
@@ -141,7 +142,7 @@ async def api_list_sessions(user: dict | None = Depends(get_current_user)):
 
 
 @app.get("/api/monitor/sessions")
-async def api_monitor_sessions():
+async def api_monitor_sessions(user: dict = Depends(require_user)):
     return {"sessions": get_sessions_with_status()}
 
 
@@ -153,13 +154,19 @@ async def api_create_session(data: SessionCreate, user: dict | None = Depends(ge
 
 
 @app.delete("/api/sessions/{session_id}")
-async def api_delete_session(session_id: str):
+async def api_delete_session(session_id: str, user: dict | None = Depends(get_current_user)):
+    user_id = user["id"] if user else None
+    if not check_session_access(session_id, user_id):
+        raise HTTPException(status_code=403, detail="无权操作该会话")
     ok = delete_session(session_id)
     return {"ok": ok}
 
 
 @app.patch("/api/sessions/{session_id}")
-async def api_rename_session(session_id: str, data: SessionRename):
+async def api_rename_session(session_id: str, data: SessionRename, user: dict | None = Depends(get_current_user)):
+    user_id = user["id"] if user else None
+    if not check_session_access(session_id, user_id):
+        raise HTTPException(status_code=403, detail="无权操作该会话")
     ok = rename_session(session_id, data.title)
     return {"ok": ok}
 
@@ -289,8 +296,15 @@ async def _save_session_snapshot(conv, config, sid, src="web"):
 
 @app.websocket("/ws")
 async def ws_chat(websocket: WebSocket):
+    token = websocket.query_params.get("token")
+    ws_user = None
+    if token:
+        payload = decode_jwt(token)
+        if payload:
+            from server.db import get_user_by_id
+            ws_user = get_user_by_id(payload["sub"])
     await websocket.accept()
-    logger.info("WS connected: %s", websocket.client)
+    logger.info("WS connected: %s (user: %s)", websocket.client, ws_user["username"] if ws_user else "guest")
     conv = get_app()
     if not conv:
         await websocket.send_json({"type": "error", "content": "Agent 未就绪"})
@@ -440,7 +454,10 @@ async def ws_chat(websocket: WebSocket):
 # ── History ──
 
 @app.get("/api/sessions/{session_id}/history")
-async def get_session_history(session_id: str):
+async def get_session_history(session_id: str, user: dict | None = Depends(get_current_user)):
+    user_id = user["id"] if user else None
+    if not check_session_access(session_id, user_id):
+        raise HTTPException(status_code=403, detail="无权访问该会话")
     conv = get_app()
     if not conv:
         return {"ok": False, "error": "Agent 未就绪"}
@@ -481,14 +498,14 @@ async def get_skills():
 
 
 @app.patch("/api/skills/{skill_name}")
-async def toggle_skill(skill_name: str, data: SkillToggle):
+async def toggle_skill(skill_name: str, data: SkillToggle, user: dict = Depends(require_user)):
     from agent.skills.registry import get_registry
     get_registry().set_enabled(skill_name, data.enabled)
     return {"ok": True}
 
 
 @app.post("/api/skills/install")
-async def install_skills_zip(file: UploadFile = File(...)):
+async def install_skills_zip(file: UploadFile = File(...), user: dict = Depends(require_user)):
     if not file.filename or not file.filename.endswith(".zip"):
         return {"ok": False, "error": "仅支持 .zip 文件"}
 
@@ -556,7 +573,7 @@ async def get_workspace(filename: str):
 
 
 @app.post("/api/workspace")
-async def save_workspace(data: WorkspaceWrite):
+async def save_workspace(data: WorkspaceWrite, user: dict = Depends(require_user)):
     write_workspace_file(data.filename, data.content)
     return {"ok": True}
 
@@ -569,7 +586,7 @@ async def get_cron():
 
 
 @app.post("/api/cron/remove")
-async def delete_cron(data: CronDelete):
+async def delete_cron(data: CronDelete, user: dict = Depends(require_user)):
     remove_cron_job(data.job_id)
     return {"ok": True}
 
@@ -583,7 +600,7 @@ async def get_settings(profile: str = "dev"):
 
 
 @app.post("/api/settings")
-async def save_settings(data: SettingsUpdate):
+async def save_settings(data: SettingsUpdate, user: dict = Depends(require_user)):
     from agent.settings import save
     ok = save(data.data, profile=data.profile)
     return {"ok": ok}
@@ -604,4 +621,3 @@ async def get_profiles():
     if not profiles:
         profiles = [{"id": "dev", "label": "开发助手"}]
     return {"profiles": profiles}
-    return {"ok": ok}

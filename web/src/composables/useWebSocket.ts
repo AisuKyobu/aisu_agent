@@ -19,8 +19,9 @@ export function useWebSocket() {
 
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const url = `${proto}//${location.host}/ws`
-    console.log('[WS] connecting to', url)
+    const token = localStorage.getItem('aisu_token')
+    const url = token ? `${proto}//${location.host}/ws?token=${token}` : `${proto}//${location.host}/ws`
+    console.log('[WS] connecting to', url.replace(token || '', '***'))
 
     ws = new WebSocket(url)
 

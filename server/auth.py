@@ -1,8 +1,10 @@
 """Auth 路由 — 注册、登录、邮箱验证、JWT 中间件"""
 
 import logging
+import os
 import secrets
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import bcrypt
 import jwt
@@ -14,7 +16,21 @@ from server.db import (create_user, create_verification_token, get_pending_token
 
 logger = logging.getLogger("aisu.auth")
 
-JWT_SECRET = secrets.token_hex(32)
+
+def _load_or_create_jwt_secret() -> str:
+    env_secret = os.getenv("JWT_SECRET")
+    if env_secret:
+        return env_secret
+    secret_path = Path(os.getenv("DATA_DIR", ".")) / ".jwt_secret"
+    if secret_path.exists():
+        return secret_path.read_text(encoding="utf-8").strip()
+    new_secret = secrets.token_hex(32)
+    secret_path.write_text(new_secret, encoding="utf-8")
+    logger.info("Generated new JWT secret at %s", secret_path)
+    return new_secret
+
+
+JWT_SECRET = _load_or_create_jwt_secret()
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 72
 

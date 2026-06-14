@@ -53,9 +53,10 @@ def agent_node(state: AgentState, ctx) -> dict:
     budget.estimate(messages, tools_count=len(valid_tools))
 
     _log.step_start(f"Agent({tt or '?'}) step={state.get('current_step',0)}/{state.get('max_steps','?')} msgs={len(messages)} est={budget._rough_estimate}")
-    _cache_key = state.get("current_step", 0)
+    _current_step = state.get("current_step", 0)
+    _tid_key = tid or "default"
 
-    if _cache_key == 0 or _cache_key not in _prompt_cache:
+    if _current_step == 0 or _tid_key not in _prompt_cache:
         guidance_text = ctx.workspace.load_file("GUIDANCE.md", profile=_profile)
         parts = build_system_prompt(
             system_prompt_base=ctx.system_prompt,
@@ -68,9 +69,9 @@ def agent_node(state: AgentState, ctx) -> dict:
             thread_id=tid,
             guidance_text=guidance_text,
         )
-        _prompt_cache[tid or "default"] = parts
+        _prompt_cache[_tid_key] = parts
     else:
-        parts = _prompt_cache.get(tid or "default", {})
+        parts = _prompt_cache[_tid_key]
 
     context = [SystemMessage(content=join_prompt_parts(parts))]
 
