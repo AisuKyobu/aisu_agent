@@ -166,10 +166,19 @@ class MemoryStore(MemoryProvider):
         return results
 
     def _remember_internal(self, key: str, value: str, source: str = ""):
-        sid = f"sem_{hash(key) & 0xFFFFFFFF:08x}"
-        self._conn.execute(
-            "INSERT OR REPLACE INTO semantic VALUES (?,?,?,?,?,?,?)",
-            (sid, key, value, source, time.time(), time.time(), 0.7))
+        import uuid
+        existing = self._conn.execute(
+            "SELECT id FROM semantic WHERE key=?", (key,)).fetchone()
+        now = time.time()
+        if existing:
+            self._conn.execute(
+                "UPDATE semantic SET value=?, source=?, last_accessed=?, confidence=0.7 WHERE id=?",
+                (value, source, now, existing[0]))
+        else:
+            sid = "sem_" + uuid.uuid4().hex[:12]
+            self._conn.execute(
+                "INSERT INTO semantic VALUES (?,?,?,?,?,?,?)",
+                (sid, key, value, source, now, now, 0.7))
         self._conn.commit()
 
     def _search_semantic_internal(self, query: str) -> str:

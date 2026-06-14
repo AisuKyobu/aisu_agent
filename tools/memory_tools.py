@@ -31,7 +31,9 @@ def remember(key: str, value: str) -> str:
         for word in _extract_keywords(value):
             if word != key:
                 mgr.remember(word, f"{key}: {value}", source="agent:index")
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.getLogger("aisu.memory").warning("remember failed: %s", e)
         pass
     return f"已记住: [{key}] {value}"
 
@@ -44,7 +46,9 @@ def memory_search(query: str) -> str:
         result = get_memory_manager().search_semantic(query)
         if result != "未找到匹配的记忆":
             return result
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.getLogger("aisu.memory").warning("memory_search failed: %s", e)
         pass
     return "未找到匹配的记忆"
 

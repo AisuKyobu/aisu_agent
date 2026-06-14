@@ -86,8 +86,8 @@ class MemoryManager:
         for p in self._providers:
             try:
                 p.save_episode(goal, steps, errors, outcome, summary)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Memory provider '%s' save_episode failed: %s", p.name, e)
 
     def search_similar(self, goal: str, k: int = 3) -> list:
         if self.builtin:

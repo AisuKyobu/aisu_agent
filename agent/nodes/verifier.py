@@ -107,9 +107,13 @@ def verifier_node(state: AgentState, ctx=None) -> dict:
                 break
 
     vlog = list(state.get("verification_log", []))
+    if len(vlog) > 200:
+        vlog = vlog[-200:]
     updates = {"verification_log": vlog, "last_result": str(tool_output)[:500]}
 
     history = list(state.get("action_history", []))
+    if len(history) > 100:
+        history = history[-100:]
     fixes = list(state.get("pending_fixes", []))
 
     # ── 三维 Guardrail 分析 ──

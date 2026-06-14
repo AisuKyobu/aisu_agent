@@ -74,24 +74,24 @@ def create_user(username: str, password_hash: str, email: str = "") -> dict:
             "INSERT INTO users (id, username, password_hash, email, created_at) VALUES (?,?,?,?,?)",
             (uid, username, password_hash, email, now))
         conn.commit()
+        conn.close()
         return {"id": uid, "username": username, "email": email, "role": "user", "email_verified": 0}
     except sqlite3.IntegrityError:
-        pass
-    finally:
         conn.close()
+
     # 用户名或邮箱已存在 → 检查是否未验证，可以覆盖
     existing = get_user_by_username(username)
     if not existing and email:
-        existing = conn = _connect()
-        row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
-        conn.close()
+        ec = _connect()
+        row = ec.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        ec.close()
         existing = dict(row) if row else None
     if existing and not existing.get("email_verified"):
-        conn = _connect()
-        conn.execute("DELETE FROM verification_tokens WHERE user_id=?", (existing["id"],))
-        conn.execute("DELETE FROM users WHERE id=?", (existing["id"],))
-        conn.commit()
-        conn.close()
+        dc = _connect()
+        dc.execute("DELETE FROM verification_tokens WHERE user_id=?", (existing["id"],))
+        dc.execute("DELETE FROM users WHERE id=?", (existing["id"],))
+        dc.commit()
+        dc.close()
         return create_user(username, password_hash, email)
     raise ValueError("用户名或邮箱已存在")
 

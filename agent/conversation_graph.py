@@ -42,6 +42,7 @@ class ParallelToolNode(ToolNode):
 
     def _dispatch_concurrent(self, tool_calls, config):
         from concurrent.futures import ThreadPoolExecutor, as_completed
+        from config import TOOL_TIMEOUT
         import json as _json
         results_by_id = {}
         num = len(tool_calls)
@@ -57,7 +58,7 @@ class ParallelToolNode(ToolNode):
             for future in as_completed(futures):
                 name, tid = futures[future]
                 try:
-                    results_by_id[tid] = future.result(timeout=60)
+                    results_by_id[tid] = future.result(timeout=TOOL_TIMEOUT)
                 except Exception as e:
                     results_by_id[tid] = _json.dumps({"error": str(e)}, ensure_ascii=False)
         messages = []
