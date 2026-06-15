@@ -12,4 +12,7 @@ memory/
 sessions/
 cron_jobs.json
 skills-lock.json
+.jwt_secret
+aisu_bot/
+新建文本文档.txt
 # skills/ 已跟踪，保留体积挂载持久化
