@@ -12,3 +12,4 @@ memory/
 sessions/
 cron_jobs.json
 skills-lock.json
+skills/
