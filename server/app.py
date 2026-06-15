@@ -421,7 +421,7 @@ async def ws_chat(websocket: WebSocket):
                         if output and str(output).strip():
                             output_str = str(output)
                             await websocket.send_json({"type": "tool_result", "content": output_str[:200], "duration": dur, "tool_name": tool_name, "session_id": sid})
-                            _send_file_attachment(websocket, tool_name, output_str, sid)
+                            await _send_file_attachment(websocket, tool_name, output_str, sid)
 
                 # Send agent status（对话完成后汇总）
                 await _send_agent_status(websocket, config, sid)
