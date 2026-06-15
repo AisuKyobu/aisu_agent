@@ -18,8 +18,13 @@ class BrowserManager:
             if self._page is not None:
                 return self._page
             from playwright.sync_api import sync_playwright
+            import os
             self._playwright = sync_playwright().start()
-            self._browser = self._playwright.chromium.launch(headless=BROWSER_HEADLESS)
+            self._browser = self._playwright.chromium.launch(
+                headless=BROWSER_HEADLESS,
+                executable_path=os.getenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH", ""),
+                args=["--no-sandbox", "--disable-gpu"],
+            )
             self._page = self._browser.new_page()
             return self._page
 
