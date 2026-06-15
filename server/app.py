@@ -699,6 +699,23 @@ async def download_file(filepath: str):
     )
 
 
+@app.get("/sandbox/{filepath:path}")
+async def serve_sandbox_file(filepath: str):
+    from config import DATA_DIR
+    sandbox_dir = os.path.normpath(os.path.join(DATA_DIR, "sandbox"))
+    full = os.path.normpath(os.path.join(sandbox_dir, filepath))
+    if not full.startswith(sandbox_dir):
+        raise HTTPException(status_code=403, detail="路径越界")
+    if not os.path.isfile(full):
+        raise HTTPException(status_code=404, detail="文件不存在")
+    ext = os.path.splitext(filepath)[1].lower()
+    return FileResponse(
+        full,
+        filename=os.path.basename(filepath),
+        content_disposition_type="inline" if ext in _INLINE_EXTS else "attachment",
+    )
+
+
 # ── Cron ──
 
 @app.get("/api/cron")
