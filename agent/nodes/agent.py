@@ -15,6 +15,7 @@ from agent.types import TaskType
 from config import REASONING_MAX_FILE_READS, REASONING_MAX_SEARCH, REASONING_MAX_TOOL_CALLS
 from tools.plan_tools import format_plan, format_task_graph, load_plan, load_task_graph, set_plan_thread_id
 from tools.memory_tools import set_memory_user_id
+from tools.toolsets import set_toolset_profile
 from tools.tool_registry import registry
 
 
@@ -35,6 +36,7 @@ def agent_node(state: AgentState, ctx) -> dict:
     tid = state.get("thread_id", "")
     set_plan_thread_id(tid)
     set_memory_user_id(state.get("user_id", "guest"))
+    set_toolset_profile(state.get("profile", "dev"))
     _log.bind(tid, state.get("current_step", 0))
     plan_data = load_plan(tid)
     plan = format_plan(plan_data)

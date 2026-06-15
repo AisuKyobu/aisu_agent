@@ -4,6 +4,7 @@
 替代原有的硬编码 _TOOLS_SEARCH / _TOOLS_ACTION / _TOOLS_REASONING 等分组。
 """
 
+import threading
 from typing import List, Set
 
 TOOLSETS = {
@@ -132,3 +133,23 @@ def get_tool_names_for_task(task_type: str) -> List[str]:
 
 def get_all_tool_names() -> List[str]:
     return sorted(_CORE_TOOLS)
+
+
+# ── Profile 工具限制 ──
+
+PROFILE_DISABLED_TOOLS = {
+    "qq": frozenset({"write_file", "browser_open", "browser_click",
+                     "browser_type", "browser_screenshot", "browser_inspect"}),
+}
+
+_toolset_profile = threading.local()
+
+
+def set_toolset_profile(profile: str):
+    _toolset_profile.profile = profile
+
+
+def is_tool_allowed(name: str) -> bool:
+    profile = getattr(_toolset_profile, "profile", "dev")
+    disabled = PROFILE_DISABLED_TOOLS.get(profile, frozenset())
+    return name not in disabled

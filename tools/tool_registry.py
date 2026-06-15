@@ -212,6 +212,9 @@ class ToolRegistry:
         entry = self._tools.get(name)
         if not entry:
             return f'{{"error": "Unknown tool: {name}"}}'
+        from tools.toolsets import is_tool_allowed
+        if not is_tool_allowed(name):
+            return json.dumps({"error": f"工具 {name} 在当前 Profile 中被禁用"}, ensure_ascii=False)
         try:
             args = _coerce_tool_args(name, args, entry)
             if isinstance(args, dict):
