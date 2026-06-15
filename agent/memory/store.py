@@ -120,7 +120,11 @@ class MemoryStore(MemoryProvider):
             source TEXT, created_at REAL, last_accessed REAL,
             confidence REAL DEFAULT 0.5, user_id TEXT DEFAULT 'guest'
         )""")
-        # 迁移旧数据：NULL → 'guest'
+        # 迁移旧表/旧数据
+        try:
+            c.execute("ALTER TABLE semantic ADD COLUMN user_id TEXT DEFAULT 'guest'")
+        except Exception:
+            pass
         try:
             c.execute("UPDATE semantic SET user_id='guest' WHERE user_id IS NULL")
         except Exception:
