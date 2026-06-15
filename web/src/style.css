@@ -176,6 +176,7 @@ html, body {
 .ai-bubble hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
 .ai-bubble strong { font-weight: 600; }
 .ai-bubble em { font-style: italic; }
+.ai-bubble img { max-width: 100%; height: auto; display: block; border-radius: 4px; }
 
 .user-bubble code { background: rgba(255,255,255,.2); }
 
