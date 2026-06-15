@@ -13,18 +13,67 @@ class BrowserManager:
         self._browser = None
         self._page = None
 
+    def _find_chromium(self) -> str | None:
+        import os
+        import shutil
+
+        # 1. explicit env var
+        path = os.getenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH", "")
+        if path and os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+
+        # 2. known deployment paths
+        candidates = [
+            "/opt/chromium/chrome-linux64/chrome",
+            "/opt/google/chrome/chrome",
+            "/usr/bin/chromium",
+            "/usr/bin/chromium-browser",
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+        ]
+        for p in candidates:
+            if os.path.isfile(p) and os.access(p, os.X_OK):
+                return p
+
+        # 3. PATH lookup
+        for name in ("chromium", "chromium-browser", "google-chrome", "google-chrome-stable"):
+            p = shutil.which(name)
+            if p:
+                return p
+
+        return None
+
     def ensure(self):
         with self._lock:
             if self._page is not None:
                 return self._page
             from playwright.sync_api import sync_playwright
             import os
+
+            executable_path = self._find_chromium()
+            if not executable_path:
+                raise RuntimeError(
+                    "未找到 Chromium 浏览器。请确认已安装 Chromium，"
+                    "或设置环境变量 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH。"
+                )
+
             self._playwright = sync_playwright().start()
             self._browser = self._playwright.chromium.launch(
                 headless=BROWSER_HEADLESS,
-                executable_path=os.getenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH", ""),
-                args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage",
-                      "--no-zygote", "--disable-gpu"],
+                executable_path=executable_path,
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--no-zygote",
+                    "--disable-gpu",
+                    "--disable-software-rasterizer",
+                    "--disable-background-networking",
+                    "--disable-background-timer-throttling",
+                    "--disable-renderer-backgrounding",
+                    "--single-process",
+                ],
+                timeout=60000,
             )
             self._page = self._browser.new_page()
             return self._page

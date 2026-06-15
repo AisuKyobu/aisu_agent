@@ -15,6 +15,7 @@ services:
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
       - SEARXNG_BASE_URL=http://searxng:8080
+      - PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/chromium/chrome-linux64/chrome
       - MODEL_NAME=${MODEL_NAME:-deepseek-chat}
       - DATA_DIR=/app/data
       - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
