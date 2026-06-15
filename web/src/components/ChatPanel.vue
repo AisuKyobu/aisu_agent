@@ -233,6 +233,20 @@ onMounted(() => {
     loadSessions()
   }
   check()
+  // 测试：1秒后注入测试附件，验证模板渲染
+  setTimeout(() => {
+    debugLog.value.push('🧪 mount test')
+    msgs.value.push({
+      role: 'attachment',
+      time: now(),
+      file: {
+        filename: 'test.png',
+        url: '/api/files/browser_screenshot.png',
+        is_image: true,
+        tool_name: '🧪 mount-test',
+      } as any,
+    })
+  }, 500)
 })
 </script>
 
