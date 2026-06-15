@@ -5,7 +5,7 @@ from typing import Any
 
 from langchain_deepseek import ChatDeepSeek
 
-from config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, MODEL_NAME
+from config import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, MODEL_NAME, DATA_DIR
 from agent.logger import NodeLogger
 
 _log = NodeLogger("verifier_rules")
@@ -110,7 +110,8 @@ def verify_l2(tool_name: str, tool_args: dict, tool_output: str) -> dict:
                         "reason": f"声称写入的 {p} 不存在"}
 
     if tool_name == "browser_screenshot":
-        if not os.path.exists("sandbox/browser_screenshot.png"):
+        ss_path = os.path.join(DATA_DIR, "sandbox", "browser_screenshot.png")
+        if not os.path.exists(ss_path):
             return {"level": "L2", "passed": False, "tool": tool_name,
                     "reason": "截图文件不存在"}
 
