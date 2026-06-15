@@ -3,6 +3,7 @@ import threading
 from langchain.tools import tool
 
 from config import BROWSER_HEADLESS
+from tools.sandbox import SANDBOX_DIR
 from tools.tool_registry import registry
 
 
@@ -189,9 +190,10 @@ def browser_screenshot() -> str:
     try:
         page = _manager.ensure()
         import os
-        path = os.path.join("sandbox", "browser_screenshot.png")
-        page.screenshot(path=path)
-        return f"截图已保存: {path}"
+        full_path = os.path.join(SANDBOX_DIR, "browser_screenshot.png")
+        page.screenshot(path=full_path)
+        # 保持返回消息带 sandbox/ 前缀，匹配附件检测正则
+        return f"截图已保存: sandbox/browser_screenshot.png"
     except Exception as e:
         err = str(e)
         if "Cannot switch to a different thread" in err:
