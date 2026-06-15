@@ -18,6 +18,7 @@ interface Message { role: string; content?: string; time?: string; file?: FileAt
 const sessions = ref<Session[]>([])
 const activeSid = ref<string>('')
 const msgs = ref<Message[]>([])
+const debugLog = ref<string[]>([])
 const input = ref('')
 const streaming = ref(false)
 const streamingBuf = ref('')
@@ -202,8 +203,9 @@ props.ws.on('system_error', (msg: any) => {
 })
 
 props.ws.on('file_attachment', (msg: any) => {
-  console.log('[file_attachment] received:', msg)
-  const entry = {
+  debugLog.value.push('📎 received: ' + JSON.stringify(msg).slice(0, 100))
+  if (debugLog.value.length > 10) debugLog.value.shift()
+  msgs.value.push({
     role: 'attachment',
     time: now(),
     file: {
@@ -214,10 +216,7 @@ props.ws.on('file_attachment', (msg: any) => {
       is_image: msg.is_image || false,
       tool_name: msg.tool_name || '',
     },
-  }
-  console.log('[file_attachment] pushing entry:', entry)
-  msgs.value.push(entry)
-  console.log('[file_attachment] msgs length:', msgs.value.length)
+  })
 })
 
 watch(msgs, scrollBottom, { deep: true })
@@ -272,6 +271,9 @@ onMounted(() => {
 
     <!-- Chat area -->
     <main class="chat-main">
+      <div class="chat-debug" v-if="debugLog.length">
+        <div v-for="(d, i) in debugLog" :key="i" class="debug-line">{{ d }}</div>
+      </div>
       <div class="chat-msgs" ref="msgContainer">
         <div v-if="!msgs.length && !activeSid" class="chat-empty">
           <div class="empty-icon">⊳</div>
