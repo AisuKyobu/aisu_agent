@@ -399,3 +399,19 @@ html, body {
 .file-link:hover {
   opacity: .8;
 }
+
+/* ── Attachments ── */
+.attachment-block {
+  display: flex; flex-direction: column; gap: 4px; padding: 6px 12px;
+  background: var(--bg-sidebar); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); max-width: 320px;
+}
+.attachment-label {
+  font-size: 11px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: .3px;
+}
+.attachment-image {
+  max-width: 100%; max-height: 400px; border-radius: 4px;
+  cursor: pointer; transition: .15s; display: block;
+}
+.attachment-image:hover { opacity: .85; }

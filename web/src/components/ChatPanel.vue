@@ -11,8 +11,9 @@ marked.setOptions({ breaks: false, gfm: true })
 const props = defineProps<{ ws: ReturnType<typeof useWebSocket> }>()
 const auth = useAuth()
 
+interface FileAttachment { filename: string; path: string; url: string; mime_type: string; is_image: boolean; tool_name: string }
 interface Session { id: string; title: string; created_at?: number }
-interface Message { role: string; content: string; time?: string }
+interface Message { role: string; content?: string; time?: string; file?: FileAttachment }
 
 const sessions = ref<Session[]>([])
 const activeSid = ref<string>('')
@@ -139,6 +140,10 @@ function scrollBottom() {
   nextTick(() => { const el = msgContainer.value; if (el) el.scrollTop = el.scrollHeight })
 }
 
+function openUrl(url: string) {
+  window.open(url, '_blank')
+}
+
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendChat() }
 }
@@ -194,6 +199,21 @@ props.ws.on('system_error', (msg: any) => {
   msgs.value.push({ role: 'system', content: `⚠ ${msg.content || '系统错误'}` })
   streaming.value = false
   streamingBuf.value = ''
+})
+
+props.ws.on('file_attachment', (msg: any) => {
+  msgs.value.push({
+    role: 'attachment',
+    time: now(),
+    file: {
+      filename: msg.filename || '',
+      path: msg.path || '',
+      url: msg.url || '',
+      mime_type: msg.mime_type || '',
+      is_image: msg.is_image || false,
+      tool_name: msg.tool_name || '',
+    },
+  })
 })
 
 watch(msgs, scrollBottom, { deep: true })
@@ -261,6 +281,17 @@ onMounted(() => {
             <template v-else-if="m.role === 'ai'">
               <div class="ai-avatar">AI</div>
               <div class="msg-bubble ai-bubble" v-html="renderContent(m.content)" />
+            </template>
+            <template v-else-if="m.role === 'attachment' && m.file">
+              <div class="attachment-block">
+                <div class="attachment-label">{{ m.file.tool_name }}</div>
+                <template v-if="m.file.is_image">
+                  <img :src="m.file.url" :alt="m.file.filename" class="attachment-image" @click="openUrl(m.file.url)" />
+                </template>
+                <template v-else>
+                  <a :href="m.file.url" target="_blank" class="file-link">{{ m.file.filename }}</a>
+                </template>
+              </div>
             </template>
             <template v-else>
               <div class="sys-msg">{{ m.content }}</div>

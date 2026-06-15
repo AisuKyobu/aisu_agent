@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 import shutil
@@ -418,7 +419,9 @@ async def ws_chat(websocket: WebSocket):
                         tn = _node_times.get(tool_name, {})
                         dur = round(asyncio.get_event_loop().time() - tn.get("enter", asyncio.get_event_loop().time()), 2)
                         if output and str(output).strip():
-                            await websocket.send_json({"type": "tool_result", "content": str(output)[:200], "duration": dur, "tool_name": tool_name, "session_id": sid})
+                            output_str = str(output)
+                            await websocket.send_json({"type": "tool_result", "content": output_str[:200], "duration": dur, "tool_name": tool_name, "session_id": sid})
+                            _send_file_attachment(websocket, tool_name, output_str, sid)
 
                 # Send agent status（对话完成后汇总）
                 await _send_agent_status(websocket, config, sid)
@@ -580,20 +583,99 @@ async def save_workspace(data: WorkspaceWrite, user: dict = Depends(require_user
     return {"ok": True}
 
 
+# ── 附件检测 ──
+
+_MIME_MAP = {
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml",
+    ".bmp": "image/bmp", ".ico": "image/x-icon",
+    ".pdf": "application/pdf",
+    ".txt": "text/plain", ".md": "text/markdown",
+    ".py": "text/x-python", ".js": "text/javascript", ".ts": "text/x-typescript",
+    ".json": "application/json", ".yaml": "text/yaml", ".yml": "text/yaml",
+    ".csv": "text/csv", ".html": "text/html", ".css": "text/css",
+    ".zip": "application/zip", ".tar": "application/x-tar", ".gz": "application/gzip",
+}
+
+
+def _detect_file_attachment(output_str: str) -> dict | None:
+    """解析工具输出，若包含文件路径则返回附件信息 dict。"""
+    from config import DATA_DIR
+    sandbox_dir = os.path.normpath(os.path.join(DATA_DIR, "sandbox"))
+
+    m = re.match(r'^截图已保存[：:]?\s*(.+)', output_str.strip())
+    if m:
+        rel_path = m.group(1).strip()
+        return _build_attachment(rel_path, sandbox_dir)
+
+    m = re.match(r'^已写入\s*(.+)', output_str.strip())
+    if m:
+        full_path = m.group(1).strip()
+        # full_path 可能是绝对路径(/app/data/sandbox/xx) 或相对路径
+        try:
+            rel = os.path.relpath(full_path, sandbox_dir)
+            if not rel.startswith(".."):
+                return _build_attachment(rel, sandbox_dir)
+        except ValueError:
+            pass
+        # 直接取 basename
+        return _build_attachment(os.path.basename(full_path), sandbox_dir)
+
+    return None
+
+
+def _build_attachment(rel_path: str, sandbox_dir: str) -> dict | None:
+    full_path = os.path.normpath(os.path.join(sandbox_dir, rel_path))
+    if not full_path.startswith(sandbox_dir):
+        return None
+    if not os.path.isfile(full_path):
+        return None
+
+    filename = os.path.basename(full_path)
+    ext = os.path.splitext(filename)[1].lower()
+    mime = _MIME_MAP.get(ext, "application/octet-stream")
+    # 文件相对 sandbox 的路径用于 URL
+    file_rel = os.path.normpath(rel_path).replace("\\", "/")
+    return {
+        "filename": filename,
+        "path": file_rel,
+        "url": f"/api/files/{file_rel}",
+        "mime_type": mime,
+        "is_image": mime.startswith("image/"),
+    }
+
+
+async def _send_file_attachment(websocket, tool_name: str, output_str: str, sid: str):
+    att = _detect_file_attachment(output_str)
+    if att:
+        att["tool_name"] = tool_name
+        att["type"] = "file_attachment"
+        att["session_id"] = sid
+        await websocket.send_json(att)
+
+
 # ── Files ──
 
 from fastapi.responses import FileResponse
 
 @app.get("/api/files/{filepath:path}")
 async def download_file(filepath: str):
-    import os
-    from config import WORKSPACE_DIR
+    from config import WORKSPACE_DIR, DATA_DIR
+    sandbox_dir = safe_path = os.path.normpath(os.path.join(DATA_DIR, "sandbox"))
+
+    # 优先 WORKSPACE_DIR
     full = os.path.normpath(os.path.join(WORKSPACE_DIR, filepath))
-    if not full.startswith(os.path.normpath(WORKSPACE_DIR)):
-        raise HTTPException(status_code=403, detail="路径越界")
-    if not os.path.isfile(full):
-        raise HTTPException(status_code=404, detail="文件不存在")
-    return FileResponse(full, filename=os.path.basename(filepath))
+    if full.startswith(os.path.normpath(WORKSPACE_DIR)):
+        if os.path.isfile(full):
+            return FileResponse(full, filename=os.path.basename(filepath))
+
+    # 回退 SANDBOX_DIR
+    full = os.path.normpath(os.path.join(sandbox_dir, filepath))
+    if full.startswith(sandbox_dir):
+        if os.path.isfile(full):
+            return FileResponse(full, filename=os.path.basename(filepath))
+
+    raise HTTPException(status_code=404, detail="文件不存在")
 
 
 # ── Cron ──
