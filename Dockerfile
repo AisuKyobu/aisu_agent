@@ -52,10 +52,7 @@ COPY . .
 COPY --from=frontend /src/dist /app/web/dist
 
 RUN rm -rf /app/browsers && \
-    mkdir -p /app/data/workspace /app/data/sessions /app/data/memory /app/data/sandbox && \
-    chown -R 1000:1000 /app
-
-USER 1000:1000
+    mkdir -p /app/data/workspace /app/data/sessions /app/data/memory /app/data/sandbox
 
 ENV DATA_DIR=/app/data
 ENV PYTHONDONTWRITEBYTECODE=1
