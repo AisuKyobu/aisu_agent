@@ -48,7 +48,18 @@ def _matched_any(text: str, patterns: list[str]) -> bool:
 def verify_l1(tool_name: str, output: Any) -> dict:
     """L1 语法校验：扫描 tool_output 中的错误指示符。"""
     text = str(output) if output is not None else ""
-    # 去除 untrusted_tool_result XML 包装，避免误判
+
+    if not text.strip():
+        return {"level": "L1", "passed": False, "tool": tool_name, "reason": "空输出"}
+
+    # web_search / web_fetch 返回外部内容，跳过错误模式检测
+    # HTML 响应也不做错误检测
+    if tool_name in ("web_search", "web_fetch"):
+        return {"level": "L1", "passed": True, "tool": tool_name, "reason": ""}
+    if text.strip().startswith("<!DOCTYPE") or text.strip().startswith("<html"):
+        return {"level": "L1", "passed": True, "tool": tool_name, "reason": ""}
+
+    # 去除 untrusted_tool_result XML 包装
     text = re.sub(r"</?untrusted_tool_result[^>]*>", "", text)
 
     if not text.strip():

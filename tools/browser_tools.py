@@ -23,7 +23,7 @@ class BrowserManager:
             self._browser = self._playwright.chromium.launch(
                 headless=BROWSER_HEADLESS,
                 executable_path=os.getenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH", ""),
-                args=["--no-sandbox", "--disable-gpu"],
+                args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
             )
             self._page = self._browser.new_page()
             return self._page
