@@ -61,16 +61,18 @@ function selectSession(sid: string) {
 }
 
 async function newSession() {
-  const r = await fetch('/api/sessions', {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({ title: '新对话' }),
-  })
-  const data = await r.json()
-  if (data.session) {
-    sessions.value.unshift(data.session)
-    selectSession(data.session.id)
-  }
+  try {
+    const r = await fetch('/api/sessions', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ title: '新对话' }),
+    })
+    const data = await r.json()
+    if (data.session) {
+      sessions.value.unshift(data.session)
+      selectSession(data.session.id)
+    }
+  } catch {}
 }
 
 async function deleteSession(sid: string) {
@@ -172,19 +174,19 @@ props.ws.on('error', (msg: any) => {
 })
 
 watch(msgs, scrollBottom, { deep: true })
-watch(() => auth.user.value, () => {
-  activeSid.value = ''
-  msgs.value = []
-  loadSessions()
-})
-onMounted(() => {
-  if (auth.loading.value) {
-    const stop = watch(() => auth.loading.value, (v) => {
-      if (!v) { stop(); loadSessions() }
-    })
-  } else {
+watch(() => auth.user.value, (u) => {
+  if (!u) {
+    activeSid.value = ''
+    msgs.value = []
     loadSessions()
   }
+})
+onMounted(() => {
+  const check = () => {
+    if (auth.loading.value) { setTimeout(check, 50); return }
+    loadSessions()
+  }
+  check()
 })
 </script>
 
