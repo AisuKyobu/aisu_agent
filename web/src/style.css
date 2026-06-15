@@ -391,3 +391,11 @@ html, body {
   border-color: var(--primary);
   color: var(--primary);
 }
+
+.file-link {
+  color: var(--blue);
+  text-decoration: underline;
+}
+.file-link:hover {
+  opacity: .8;
+}

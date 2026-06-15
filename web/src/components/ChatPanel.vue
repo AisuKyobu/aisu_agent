@@ -32,6 +32,10 @@ function authHeaders(): Record<string, string> {
 
 function renderContent(text: string): string {
   if (!text) return ''
+  // 将 workspace/xxx 路径渲染为下载链接
+  text = text.replace(/(workspace\/[^\s\n\r,，。；;]+)/g, (m) =>
+    `<a href="/api/files/${encodeURI(m)}" target="_blank" class="file-link">${m}</a>`
+  )
   const html = marked.parse(text) as string
   return DOMPurify.sanitize(html)
 }

@@ -18,3 +18,4 @@
 ## 浏览器 (browser)
 - 仅在必要时使用浏览器（如网页交互、截图验证）
 - 优先使用 web_search 和 web_fetch 获取信息
+- Chromium 已预装在 /opt/chromium/chrome-linux64/chrome，不要尝试执行 playwright install chromium

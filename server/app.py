@@ -580,6 +580,22 @@ async def save_workspace(data: WorkspaceWrite, user: dict = Depends(require_user
     return {"ok": True}
 
 
+# ── Files ──
+
+from fastapi.responses import FileResponse
+
+@app.get("/api/files/{filepath:path}")
+async def download_file(filepath: str):
+    import os
+    from config import WORKSPACE_DIR
+    full = os.path.normpath(os.path.join(WORKSPACE_DIR, filepath))
+    if not full.startswith(os.path.normpath(WORKSPACE_DIR)):
+        raise HTTPException(status_code=403, detail="路径越界")
+    if not os.path.isfile(full):
+        raise HTTPException(status_code=404, detail="文件不存在")
+    return FileResponse(full, filename=os.path.basename(filepath))
+
+
 # ── Cron ──
 
 @app.get("/api/cron")

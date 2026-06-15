@@ -8,9 +8,9 @@ services:
       - aisu_data:/app/data
       - ./skills:/app/skills:ro
       - ./workspace:/app/data/workspace
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - TZ=Asia/Shanghai
+      - SANDBOX_MODE=host
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
       - SEARXNG_BASE_URL=http://searxng:8080
@@ -37,6 +37,7 @@ services:
     volumes:
       - searxng_data:/etc/searxng
     environment:
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-changeme123456789}
       - SEARXNG_BASE_URL=http://localhost:8889
     restart: unless-stopped
 
