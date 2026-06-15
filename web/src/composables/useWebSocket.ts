@@ -61,12 +61,16 @@ export function useWebSocket() {
 
         const typeHandlers = handlers.get(msg.type)
         if (typeHandlers) {
-          for (const fn of typeHandlers) fn(msg)
+          for (const fn of typeHandlers) {
+            try { fn(msg) } catch {}
+          }
         }
 
         const allHandlers = handlers.get('*')
         if (allHandlers) {
-          for (const fn of allHandlers) fn(msg)
+          for (const fn of allHandlers) {
+            try { fn(msg) } catch {}
+          }
         }
       } catch {}
     }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, nextTick, watch, onMounted } from 'vue'
+import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import type { useWebSocket } from '../composables/useWebSocket'
@@ -18,7 +18,6 @@ interface Message { role: string; content?: string; time?: string; file?: FileAt
 const sessions = ref<Session[]>([])
 const activeSid = ref<string>('')
 const msgs = ref<Message[]>([])
-const debugLog = ref<string[]>([])
 const input = ref('')
 const streaming = ref(false)
 const streamingBuf = ref('')
@@ -202,9 +201,7 @@ props.ws.on('system_error', (msg: any) => {
   streamingBuf.value = ''
 })
 
-props.ws.on('file_attachment', (msg: any) => {
-  debugLog.value.push('📎 received: ' + JSON.stringify(msg).slice(0, 100))
-  if (debugLog.value.length > 10) debugLog.value.shift()
+const fileHandler = (msg: any) => {
   msgs.value.push({
     role: 'attachment',
     time: now(),
@@ -217,6 +214,10 @@ props.ws.on('file_attachment', (msg: any) => {
       tool_name: msg.tool_name || '',
     },
   })
+}
+props.ws.on('file_attachment', fileHandler)
+onUnmounted(() => {
+  props.ws.off('file_attachment', fileHandler)
 })
 
 watch(msgs, scrollBottom, { deep: true })
@@ -233,20 +234,6 @@ onMounted(() => {
     loadSessions()
   }
   check()
-  // 测试：1秒后注入测试附件，验证模板渲染
-  setTimeout(() => {
-    debugLog.value.push('🧪 mount test')
-    msgs.value.push({
-      role: 'attachment',
-      time: now(),
-      file: {
-        filename: 'test.png',
-        url: '/api/files/browser_screenshot.png',
-        is_image: true,
-        tool_name: '🧪 mount-test',
-      } as any,
-    })
-  }, 500)
 })
 </script>
 
@@ -285,9 +272,6 @@ onMounted(() => {
 
     <!-- Chat area -->
     <main class="chat-main">
-      <div class="chat-debug" v-if="debugLog.length">
-        <div v-for="(d, i) in debugLog" :key="i" class="debug-line">{{ d }}</div>
-      </div>
       <div class="chat-msgs" ref="msgContainer">
         <div v-if="!msgs.length && !activeSid" class="chat-empty">
           <div class="empty-icon">⊳</div>
