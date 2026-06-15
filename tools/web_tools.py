@@ -27,15 +27,16 @@ def _cache_set(key: str, data: str):
 
 
 def _search_searxng(query: str, max_results: int) -> list[dict]:
-    from langchain_community.utilities import SearxSearchWrapper
+    import requests
     from config import SEARXNG_BASE_URL, SEARXNG_ENGINES
-    search = SearxSearchWrapper(searx_host=SEARXNG_BASE_URL, k=max_results)
-    if SEARXNG_ENGINES:
-        results = search.results(query, num_results=max_results, engines=SEARXNG_ENGINES)
-    else:
-        results = search.results(query, num_results=max_results)
+    url = f"{SEARXNG_BASE_URL}/search"
+    engines = SEARXNG_ENGINES or ["baidu", "sogou"]
+    resp = requests.get(url, params={"q": query, "format": "json", "engines": ",".join(engines)},
+                        headers={"X-Forwarded-For": "127.0.0.1"}, timeout=15)
+    resp.raise_for_status()
+    results = resp.json().get("results", [])[:max_results]
     return [
-        {"title": r.get("title", ""), "href": r.get("link", ""), "body": r.get("snippet", "")}
+        {"title": r.get("title", ""), "href": r.get("url", ""), "body": r.get("content", "")}
         for r in results
     ]
 
