@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import type { useWebSocket } from '../composables/useWebSocket'
+import { useAuth } from '../composables/useAuth'
 
 const props = defineProps<{ ws: ReturnType<typeof useWebSocket> }>()
+const auth = useAuth()
+
+function authHeaders(): Record<string, string> {
+  const t = auth.token()
+  return t ? { Authorization: `Bearer ${t}` } : {}
+}
 
 interface SessionState {
   id: string
@@ -28,7 +35,7 @@ let _timer: ReturnType<typeof setInterval> | null = null
 
 async function fetchSessions() {
   try {
-    const r = await fetch('/api/monitor/sessions')
+    const r = await fetch('/api/monitor/sessions', { headers: authHeaders() })
     const data = await r.json()
     sessions.value = data.sessions || []
   } catch {}

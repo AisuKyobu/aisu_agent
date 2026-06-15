@@ -14,7 +14,7 @@ import { useAuth } from './composables/useAuth'
 
 const tabs = [
   { id: 'chat', label: '聊天' },
-  { id: 'monitor', label: '监控' },
+  { id: 'monitor', label: '监控', authOnly: true },
   { id: 'skills', label: '技能' },
   { id: 'workspace', label: '指令', authOnly: true },
   { id: 'cron', label: '定时' },
