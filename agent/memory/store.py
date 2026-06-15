@@ -42,7 +42,7 @@ class MemoryStore(MemoryProvider):
         self._profile = profile
         path = self.db_path
         self._conn = sqlite3.connect(path, check_same_thread=False)
-        self._create_tables()
+        self._run_migrations()
         self._task_count = self._count_tasks()
         self._initialized = True
         logger.info("MemoryStore(%s) init: %d tasks in %s", profile, self._task_count, path)
@@ -104,35 +104,56 @@ class MemoryStore(MemoryProvider):
             self._conn = None
             self._initialized = False
 
-    # ── Internal methods ──
+    # ── Schema migrations ──
 
-    def _create_tables(self):
-        c = self._conn
-        c.execute("""CREATE TABLE IF NOT EXISTS episodic (
+    MIGRATIONS = [
+        (1, "episodic",
+         """CREATE TABLE IF NOT EXISTS episodic (
             id TEXT PRIMARY KEY, task_id TEXT, goal TEXT,
             steps_json TEXT, errors_json TEXT, outcome TEXT,
-            summary TEXT, created_at REAL
-        )""")
-        c.execute("""CREATE VIRTUAL TABLE IF NOT EXISTS episodic_fts
-            USING fts5(eid, task_id, goal, content)""")
-        c.execute("""CREATE TABLE IF NOT EXISTS semantic (
+            summary TEXT, created_at REAL)"""),
+        (2, "episodic_fts",
+         """CREATE VIRTUAL TABLE IF NOT EXISTS episodic_fts
+            USING fts5(eid, task_id, goal, content)"""),
+        (3, "semantic",
+         """CREATE TABLE IF NOT EXISTS semantic (
             id TEXT PRIMARY KEY, key TEXT, value TEXT,
             source TEXT, created_at REAL, last_accessed REAL,
-            confidence REAL DEFAULT 0.5, user_id TEXT DEFAULT 'guest'
-        )""")
-        # 迁移旧表/旧数据
-        try:
-            c.execute("ALTER TABLE semantic ADD COLUMN user_id TEXT DEFAULT 'guest'")
-        except Exception:
-            pass
-        try:
-            c.execute("UPDATE semantic SET user_id='guest' WHERE user_id IS NULL")
-        except Exception:
-            pass
-        c.execute("""CREATE TABLE IF NOT EXISTS reflective (
+            confidence REAL DEFAULT 0.5)"""),
+        (4, "reflective",
+         """CREATE TABLE IF NOT EXISTS reflective (
             id TEXT PRIMARY KEY, pattern TEXT, evidence_count INT DEFAULT 1,
-            confidence REAL DEFAULT 0.3, created_at REAL
-        )""")
+            confidence REAL DEFAULT 0.3, created_at REAL)"""),
+        (5, "semantic_user_id",
+         """ALTER TABLE semantic ADD COLUMN user_id TEXT DEFAULT 'guest'"""),
+        (6, "semantic_backfill",
+         """UPDATE semantic SET user_id='guest' WHERE user_id IS NULL"""),
+    ]
+
+    def _run_migrations(self):
+        c = self._conn
+        c.execute("""CREATE TABLE IF NOT EXISTS _migrations (
+            version INTEGER PRIMARY KEY, name TEXT, applied_at REAL)""")
+        row = c.execute("SELECT COALESCE(MAX(version), 0) FROM _migrations").fetchone()
+        current = row[0] if row else 0
+        for ver, name, sql in self.MIGRATIONS:
+            if ver <= current:
+                continue
+            try:
+                if name == "semantic_user_id":
+                    cols = {r[1] for r in c.execute("PRAGMA table_info(semantic)").fetchall()}
+                    if "user_id" in cols:
+                        c.execute("INSERT INTO _migrations (version, name, applied_at) VALUES (?,?,?)",
+                                  (ver, name, time.time()))
+                        c.commit()
+                        continue
+                c.executescript(sql)
+                c.execute(
+                    "INSERT INTO _migrations (version, name, applied_at) VALUES (?,?,?)",
+                    (ver, name, time.time()))
+                c.commit()
+            except Exception as e:
+                logger.warning("Migration %d (%s) failed: %s", ver, name, e)
         c.commit()
 
     def _count_tasks(self) -> int:
