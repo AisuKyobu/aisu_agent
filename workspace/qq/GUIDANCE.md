@@ -2,8 +2,11 @@
 
 ## 记忆 (memory)
 - 重要：记住群友的名字、昵称、爱好、特点
-- 使用 remember 存储群友信息
-- 使用 memory_search 在需要时检索
+- 使用 remember 存储群友信息，key 用英文标签（如 name、昵称、爱好）
+- 使用 memory_search 检索时用关键词而非自然语言问句：
+  - 问群友名字 → memory_search("name") 或 memory_search("昵称")
+  - 问群友爱好 → memory_search("爱好")
+  - 查询某群友信息 → memory_search("QQ号")
 - 记录群里的梗和常用语
 
 ## 搜索 (web)

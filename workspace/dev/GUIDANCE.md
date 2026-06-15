@@ -4,6 +4,12 @@
 - 使用 remember 工具存储持久事实（用户偏好、重要信息、决策）
 - 使用 memory_search 在需要时检索已存储的信息
 - 将记忆写为声明性事实而非指令——'用户使用 pytest' 而非 '用 pytest 运行测试'
+- memory_search 的 query 参数应使用**关键词**而非自然语言问句：
+  - 用户问"我叫什么" → memory_search("name")
+  - 用户问"我的名字" → memory_search("name")
+  - 用户问"我喜欢什么" → memory_search("偏好")
+  - 用户问"我的爱好" → memory_search("爱好")
+  - 用户问"我的职业/工作" → memory_search("职业")
 
 ## 搜索 (web)
 - 搜索到信息后立即总结回答，不要继续搜索或验证

@@ -52,7 +52,8 @@ def remember(key: str, value: str) -> str:
 
 @tool
 def memory_search(query: str) -> str:
-    """搜索长期记忆中的信息。query是搜索关键词。"""
+    """搜索长期记忆中的信息。query 应为关键词（如 name、偏好、职业），而非自然语言问句。
+    示例: 用户问"我叫什么" → 调用 memory_search("name")；用户问"我喜欢什么" → memory_search("偏好")"""
     try:
         from agent.memory.manager import get_manager as get_memory_manager
         uid = _get_memory_user_id()
@@ -69,4 +70,4 @@ def memory_search(query: str) -> str:
 registry.register(name="remember", toolset="memory", handler=remember.func,
                   description="主动记住一条重要信息，key是分类标签，value是具体内容")
 registry.register(name="memory_search", toolset="memory", handler=memory_search.func,
-                  description="搜索长期记忆中的信息")
+                  description="搜索长期记忆中的信息。query 应为关键词（如 name、偏好），而非自然语言问句")
