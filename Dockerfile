@@ -39,7 +39,8 @@ COPY browsers/chrome-linux64.zip /tmp/chrome-linux64.zip
 RUN mkdir -p /opt/chromium && \
     unzip /tmp/chrome-linux64.zip -d /opt/chromium && \
     rm /tmp/chrome-linux64.zip && \
-    chmod +x /opt/chromium/chrome-linux64/chrome
+    chmod +x /opt/chromium/chrome-linux64/chrome && \
+    chown -R 1000:1000 /opt/chromium
 
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/chromium/chrome-linux64/chrome
 
