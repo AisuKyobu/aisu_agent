@@ -8,7 +8,7 @@ import { useAuth } from '../composables/useAuth'
 // 配置 marked: 不处理换行转 br (由 CSS white-space 处理)，代码块高亮
 marked.setOptions({ breaks: false, gfm: true })
 
-const props = defineProps<{ ws: ReturnType<typeof useWebSocket> }>()
+const props = defineProps<{ ws: ReturnType<typeof useWebSocket>; demoMode?: boolean; demoRemaining?: number; demoMax?: number }>()
 const auth = useAuth()
 
 interface FileAttachment { filename: string; path: string; url: string; mime_type: string; is_image: boolean; tool_name: string }
@@ -24,6 +24,7 @@ const streamingBuf = ref('')
 const msgContainer = ref<HTMLElement | null>()
 const renamingId = ref<string>('')
 const renameText = ref('')
+const demoBlocked = ref(false)
 
 function now() { return new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) }
 function authHeaders(): Record<string, string> {
@@ -149,6 +150,7 @@ function scrollBottom() {
 }
 
 function openUrl(url: string) {
+
   window.open(url, '_blank')
 }
 
@@ -207,6 +209,13 @@ props.ws.on('system_error', (msg: any) => {
   msgs.value.push({ role: 'system', content: `⚠ ${msg.content || '系统错误'}` })
   streaming.value = false
   streamingBuf.value = ''
+})
+
+props.ws.on('demo_limit', (msg: any) => {
+  msgs.value.push({ role: 'system', content: msg.message || '演示模式次数已用完' })
+  streaming.value = false
+  streamingBuf.value = ''
+  demoBlocked.value = true
 })
 
 const fileHandler = (msg: any) => {
@@ -319,15 +328,29 @@ onMounted(() => {
       </div>
 
       <div class="chat-foot">
+        <div v-if="props.demoMode" class="demo-remaining" :class="{ exhausted: demoBlocked }">
+          {{ demoBlocked ? '演示次数已用完' : `剩余 ${props.demoRemaining ?? '?'}/${props.demoMax ?? '?'} 次对话` }}
+        </div>
         <textarea
           v-model="input"
           placeholder="输入消息... Enter 发送 / Shift+Enter 换行"
           rows="1"
           @keydown="onKeydown"
-          :disabled="streaming"
+          :disabled="streaming || demoBlocked"
         />
-        <button class="btn-send" @click="sendChat" :disabled="streaming || !input.trim()">↑</button>
+        <button class="btn-send" @click="sendChat" :disabled="streaming || !input.trim() || demoBlocked">↑</button>
       </div>
     </main>
   </div>
 </template>
+
+<style scoped>
+.demo-remaining {
+  position: absolute; top: -28px; left: 50%; transform: translateX(-50%);
+  font-size: 11px; color: var(--text-dim); white-space: nowrap;
+  background: var(--bg); padding: 2px 12px; border-radius: 10px;
+  border: 1px solid var(--border);
+}
+.demo-remaining.exhausted { color: var(--red); border-color: var(--red); }
+.chat-foot { position: relative; }
+</style>

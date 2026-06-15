@@ -5,6 +5,11 @@ from dotenv import load_dotenv
 # 加载 .env
 load_dotenv()
 
+# ===== Demo Mode（公开演示限制） =====
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+DEMO_MAX_MSG_PER_IP = int(os.getenv("DEMO_MAX_MSG_PER_IP", "5"))
+DEMO_WINDOW_SECONDS = int(os.getenv("DEMO_WINDOW_SECONDS", "86400"))
+
 # ===== DeepSeek 配置 =====
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 if not DEEPSEEK_API_KEY:
@@ -56,6 +61,10 @@ SANDBOX_IMAGE = "alpine:latest"
 # ===== 工具权限 =====
 TOOL_ALLOW = ["*"]  # 设为 ["*"] 表示全部放行，设列表则只允许指定工具
 TOOL_DENY = []      # 拒绝列表，优先级高于 ALLOW
+if DEMO_MODE:
+    # Demo 模式只保留只读搜索/读取工具
+    TOOL_ALLOW = ["web_search", "web_fetch", "read_file"]
+    TOOL_DENY = []
 
 # Toolset 级开关（替代逐个工具 allow/deny）
 TOOLSET_ENABLED = ["*"]   # ["*"] 表示全部启用

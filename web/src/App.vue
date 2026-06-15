@@ -29,7 +29,20 @@ const ws = useWebSocket()
 const auth = useAuth()
 const authPage = ref<string>('')
 
-onMounted(() => auth.fetchMe())
+const demoMode = ref(false)
+const demoRemaining = ref(5)
+const demoMax = ref(5)
+
+onMounted(async () => {
+  auth.fetchMe()
+  try {
+    const r = await fetch('/api/demo/status')
+    const data = await r.json()
+    demoMode.value = data.demo || false
+    demoRemaining.value = data.remaining || 0
+    demoMax.value = data.max || 5
+  } catch {}
+})
 
 watch(() => auth.user.value, (u) => {
   if (u) authPage.value = ''
@@ -50,9 +63,16 @@ function addToast(type: string, text: string) {
 ws.on('limit_hit', (msg) => {
   addToast('warn', `限制命中: ${msg.reason || '步数/搜索已达上限'}`)
 })
+
+ws.on('demo_remaining', (msg) => {
+  demoRemaining.value = msg.remaining ?? 0
+})
 </script>
 
 <template>
+  <div v-if="demoMode" class="demo-banner">
+    演示模式 · 本 IP 剩余 {{ demoRemaining }}/{{ demoMax }} 次对话 · 工具已受限（仅搜索/读取）
+  </div>
   <div class="app-header">
     <span class="app-logo">&gt;_ Aisu</span>
     <div style="display:flex;align-items:center;gap:12px">
@@ -86,7 +106,7 @@ ws.on('limit_hit', (msg) => {
     </div>
 
     <div class="app-main">
-      <ChatPanel v-if="activeTab === 'chat'" :ws="ws" />
+      <ChatPanel v-if="activeTab === 'chat'" :ws="ws" :demo-mode="demoMode" :demo-remaining="demoRemaining" :demo-max="demoMax" />
       <MonitorPanel v-else-if="activeTab === 'monitor'" :ws="ws" />
       <SkillsPanel v-else-if="activeTab === 'skills'" />
       <WorkspacePanel v-else-if="activeTab === 'workspace'" />
@@ -97,3 +117,11 @@ ws.on('limit_hit', (msg) => {
 
   <ToastNotification :toasts="toasts" @remove="(id: number) => toasts = toasts.filter(t => t.id !== id)" />
 </template>
+
+<style scoped>
+.demo-banner {
+  background: #fef3c7; color: #92400e; text-align: center;
+  padding: 6px 16px; font-size: 12px; flex-shrink: 0;
+  border-bottom: 1px solid #fde68a; font-weight: 500;
+}
+</style>

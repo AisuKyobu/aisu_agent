@@ -52,18 +52,26 @@ def init_auth_db() -> None:
 
 
 def ensure_default_admin() -> None:
+    import logging
+    from config import DEMO_MODE
     import bcrypt
     conn = _connect()
     row = conn.execute("SELECT id FROM users WHERE username=?", ("admin",)).fetchone()
     if not row:
         uid = uuid.uuid4().hex
         now = _now_ts()
-        pw = bcrypt.hashpw("admin123".encode(), bcrypt.gensalt()).decode()
+        if DEMO_MODE:
+            import secrets
+            admin_pw = secrets.token_urlsafe(12)
+        else:
+            admin_pw = "admin123"
+        pw = bcrypt.hashpw(admin_pw.encode(), bcrypt.gensalt()).decode()
         conn.execute(
             "INSERT INTO users (id, username, password_hash, email, email_verified, role, created_at) "
             "VALUES (?,?,?,?,?,?,?)",
             (uid, "admin", pw, "", 1, "admin", now))
         conn.commit()
+        logging.getLogger("aisu.db").info("Default admin created: admin / %s", admin_pw)
     conn.close()
 
 

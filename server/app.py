@@ -31,6 +31,7 @@ from server.state import (get_app, list_cron_jobs, list_skills,
                            broadcast_monitor_async, get_sessions_with_status,
                            get_session_owner, check_session_access)
 from server.auth import get_current_user, require_user, decode_jwt
+from server.rate_limit import check_ip_limit, increment_ip_count, extract_client_ip, get_ip_remaining
 
 
 @asynccontextmanager
@@ -318,6 +319,11 @@ async def ws_chat(websocket: WebSocket):
     _echo_prefixes = ("你已经没有剩余步数", "工具调用次数即将达到上限", "你已经反复调用了多次工具")
     _echo_buf = ""
 
+    # ── Demo mode rate limit ──
+    from config import DEMO_MODE
+    client_ip = extract_client_ip(websocket=websocket) if DEMO_MODE else ""
+    demo_limit_sent = False
+
     try:
         while True:
             data = await websocket.receive_json()
@@ -331,6 +337,27 @@ async def ws_chat(websocket: WebSocket):
             msg_user_id = data.get("user_id") or (ws_user["id"] if ws_user else "guest")
             if not text:
                 continue
+
+            # ── Demo mode: 检查 IP 限流 ──
+            if DEMO_MODE and not demo_limit_sent:
+                allowed, remaining, reset_at = check_ip_limit(client_ip)
+                if not allowed:
+                    await websocket.send_json({
+                        "type": "demo_limit",
+                        "remaining": 0,
+                        "reset_at": reset_at,
+                        "message": "演示模式次数已用完（每 IP 限 5 条），感谢体验",
+                    })
+                    demo_limit_sent = True
+                    continue
+                increment_ip_count(client_ip)
+                # 告知前端剩余次数
+                await websocket.send_json({
+                    "type": "demo_remaining",
+                    "remaining": remaining - 1,
+                    "max": DEMO_MAX_MSG_PER_IP,
+                })
+
             _server_log.bind(sid, 0)
             _server_log.user_msg(src, text)
 
@@ -520,6 +547,9 @@ async def toggle_skill(skill_name: str, data: SkillToggle, user: dict = Depends(
 
 @app.post("/api/skills/install")
 async def install_skills_zip(file: UploadFile = File(...), user: dict = Depends(require_user)):
+    from config import DEMO_MODE
+    if DEMO_MODE:
+        return {"ok": False, "error": "演示模式已禁用技能安装"}
     if not file.filename or not file.filename.endswith(".zip"):
         return {"ok": False, "error": "仅支持 .zip 文件"}
 
@@ -676,8 +706,10 @@ _INLINE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico"
 
 
 @app.get("/api/files/{filepath:path}")
-async def download_file(filepath: str):
-    from config import WORKSPACE_DIR, DATA_DIR
+async def download_file(filepath: str, user: dict | None = Depends(get_current_user)):
+    from config import DEMO_MODE, WORKSPACE_DIR, DATA_DIR
+    if DEMO_MODE and not user:
+        raise HTTPException(status_code=401, detail="Demo 模式需登录后下载文件")
     sandbox_dir = os.path.normpath(os.path.join(DATA_DIR, "sandbox"))
 
     full = None
@@ -704,8 +736,10 @@ async def download_file(filepath: str):
 
 
 @app.get("/sandbox/{filepath:path}")
-async def serve_sandbox_file(filepath: str):
-    from config import DATA_DIR
+async def serve_sandbox_file(filepath: str, user: dict | None = Depends(get_current_user)):
+    from config import DEMO_MODE, DATA_DIR
+    if DEMO_MODE and not user:
+        raise HTTPException(status_code=401, detail="Demo 模式需登录后访问文件")
     sandbox_dir = os.path.normpath(os.path.join(DATA_DIR, "sandbox"))
     full = os.path.normpath(os.path.join(sandbox_dir, filepath))
     if not full.startswith(sandbox_dir):
@@ -718,6 +752,20 @@ async def serve_sandbox_file(filepath: str):
         filename=os.path.basename(filepath),
         content_disposition_type="inline" if ext in _INLINE_EXTS else "attachment",
     )
+
+
+# ── Demo Mode ──
+
+@app.get("/api/demo/status")
+async def demo_status(request: Request):
+    from config import DEMO_MODE, DEMO_MAX_MSG_PER_IP
+    ip = extract_client_ip(request=request) if DEMO_MODE else ""
+    remaining = get_ip_remaining(ip) if DEMO_MODE else 999
+    return {
+        "demo": DEMO_MODE,
+        "remaining": remaining,
+        "max": DEMO_MAX_MSG_PER_IP if DEMO_MODE else 999,
+    }
 
 
 # ── Cron ──
