@@ -202,7 +202,8 @@ props.ws.on('system_error', (msg: any) => {
 })
 
 props.ws.on('file_attachment', (msg: any) => {
-  msgs.value.push({
+  console.log('[file_attachment] received:', msg)
+  const entry = {
     role: 'attachment',
     time: now(),
     file: {
@@ -213,7 +214,10 @@ props.ws.on('file_attachment', (msg: any) => {
       is_image: msg.is_image || false,
       tool_name: msg.tool_name || '',
     },
-  })
+  }
+  console.log('[file_attachment] pushing entry:', entry)
+  msgs.value.push(entry)
+  console.log('[file_attachment] msgs length:', msgs.value.length)
 })
 
 watch(msgs, scrollBottom, { deep: true })

@@ -668,24 +668,35 @@ async def _send_file_attachment(websocket, tool_name: str, output_str: str, sid:
 
 from fastapi.responses import FileResponse
 
+_INLINE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico", ".pdf"}
+
+
 @app.get("/api/files/{filepath:path}")
 async def download_file(filepath: str):
     from config import WORKSPACE_DIR, DATA_DIR
-    sandbox_dir = safe_path = os.path.normpath(os.path.join(DATA_DIR, "sandbox"))
+    sandbox_dir = os.path.normpath(os.path.join(DATA_DIR, "sandbox"))
 
+    full = None
     # 优先 WORKSPACE_DIR
-    full = os.path.normpath(os.path.join(WORKSPACE_DIR, filepath))
-    if full.startswith(os.path.normpath(WORKSPACE_DIR)):
-        if os.path.isfile(full):
-            return FileResponse(full, filename=os.path.basename(filepath))
-
+    p = os.path.normpath(os.path.join(WORKSPACE_DIR, filepath))
+    if p.startswith(os.path.normpath(WORKSPACE_DIR)) and os.path.isfile(p):
+        full = p
     # 回退 SANDBOX_DIR
-    full = os.path.normpath(os.path.join(sandbox_dir, filepath))
-    if full.startswith(sandbox_dir):
-        if os.path.isfile(full):
-            return FileResponse(full, filename=os.path.basename(filepath))
+    if not full:
+        p = os.path.normpath(os.path.join(sandbox_dir, filepath))
+        if p.startswith(sandbox_dir) and os.path.isfile(p):
+            full = p
 
-    raise HTTPException(status_code=404, detail="文件不存在")
+    if not full:
+        raise HTTPException(status_code=404, detail="文件不存在")
+
+    ext = os.path.splitext(filepath)[1].lower()
+    inline = ext in _INLINE_EXTS
+    return FileResponse(
+        full,
+        filename=os.path.basename(filepath),
+        content_disposition_type="inline" if inline else "attachment",
+    )
 
 
 # ── Cron ──
