@@ -1,42 +1,14 @@
-# Environment (never commit real secrets)
-.env
-.env.local
-.env.*.local
-.jwt_secret
-
-# Python
 __pycache__/
-.pytest_cache/
-*.py[cod]
-*.egg-info/
+*.pyc
+node_modules/
 dist/
-build/
-
-# Database & runtime state
-*.db
-*.db-shm
-*.db-wal
-conversations.db
-/memory/
-sessions/
-sandbox/
-plan.json
-cron_jobs.json
-
-# Logs
-*.log
-logs/
-
-# IDE
+.skills-cache.json
+.agents/
+.env
+*.zip
 .vscode/
-.idea/
-
-# OS
-Thumbs.db
-.DS_Store
-
-# Local browser binaries (large, not committed)
-browsers/*.zip
-
-# QQ Bot integration (excluded from public repo)
-aisu_bot/
+*.db
+memory/
+sessions/
+cron_jobs.json
+skills-lock.json
