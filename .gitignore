@@ -12,4 +12,4 @@ memory/
 sessions/
 cron_jobs.json
 skills-lock.json
-skills/
+# skills/ 已跟踪，保留体积挂载持久化
