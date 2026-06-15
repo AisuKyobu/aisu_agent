@@ -61,22 +61,16 @@ function selectSession(sid: string) {
 }
 
 async function newSession() {
-  try {
-    const r = await fetch('/api/sessions', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ title: '新对话' }),
-    })
-    const data = await r.json()
-    if (data.session) {
-      sessions.value.unshift(data.session)
-      selectSession(data.session.id)
-      return
-    }
-  } catch {}
-  const sid = `web_${Date.now().toString(36)}`
-  sessions.value.unshift({ id: sid, title: '新对话' })
-  selectSession(sid)
+  const r = await fetch('/api/sessions', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ title: '新对话' }),
+  })
+  const data = await r.json()
+  if (data.session) {
+    sessions.value.unshift(data.session)
+    selectSession(data.session.id)
+  }
 }
 
 async function deleteSession(sid: string) {
@@ -183,7 +177,15 @@ watch(() => auth.user.value, () => {
   msgs.value = []
   loadSessions()
 })
-onMounted(loadSessions)
+onMounted(() => {
+  if (auth.loading.value) {
+    const stop = watch(() => auth.loading.value, (v) => {
+      if (!v) { stop(); loadSessions() }
+    })
+  } else {
+    loadSessions()
+  }
+})
 </script>
 
 <template>

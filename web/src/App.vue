@@ -16,7 +16,7 @@ const tabs = [
   { id: 'chat', label: '聊天' },
   { id: 'monitor', label: '监控' },
   { id: 'skills', label: '技能' },
-  { id: 'workspace', label: '指令' },
+  { id: 'workspace', label: '指令', authOnly: true },
   { id: 'cron', label: '定时' },
   { id: 'settings', label: '设置', adminOnly: true },
 ] as const
@@ -35,7 +35,7 @@ watch(() => auth.user.value, (u) => {
   if (u) authPage.value = ''
   else {
     const current = tabs.find(t => t.id === activeTab.value)
-    if (current && (current as any).adminOnly) activeTab.value = 'chat'
+    if (current && ((current as any).adminOnly || (current as any).authOnly)) activeTab.value = 'chat'
   }
 })
 
@@ -78,7 +78,7 @@ ws.on('limit_hit', (msg) => {
   <template v-else>
     <div class="tab-bar">
       <button
-        v-for="t in tabs.filter(x => !x.adminOnly || auth.user.value?.role === 'admin')" :key="t.id"
+        v-for="t in tabs.filter(x => (!(x as any).authOnly && !(x as any).adminOnly) || ((x as any).authOnly && auth.user.value) || ((x as any).adminOnly && auth.user.value?.role === 'admin'))" :key="t.id"
         class="tab-btn"
         :class="{ active: activeTab === t.id }"
         @click="activeTab = t.id"
