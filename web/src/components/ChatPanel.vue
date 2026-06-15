@@ -52,6 +52,8 @@ async function loadSessions() {
   }
 }
 
+const _savedAttachments: Message[] = []
+
 async function loadHistory(sid: string) {
   try {
     const r = await fetch(`/api/sessions/${sid}/history`, { headers: authHeaders() })
@@ -64,6 +66,10 @@ async function loadHistory(sid: string) {
     if (data.ok && data.messages) {
       msgs.value = data.messages.map((m: any) => ({ role: m.role, content: m.content || '', time: '' }))
     }
+    // 重新追加附件消息（附件只在前端内存中，历史 API 不包含）
+    for (const a of _savedAttachments) {
+      msgs.value.push(a)
+    }
   } catch {
     console.error('[ChatPanel] loadHistory failed')
   }
@@ -72,6 +78,7 @@ async function loadHistory(sid: string) {
 function selectSession(sid: string) {
   activeSid.value = sid
   msgs.value = []
+  _savedAttachments.length = 0
   loadHistory(sid)
 }
 
@@ -202,7 +209,7 @@ props.ws.on('system_error', (msg: any) => {
 })
 
 const fileHandler = (msg: any) => {
-  msgs.value.push({
+  const entry: Message = {
     role: 'attachment',
     time: now(),
     file: {
@@ -213,7 +220,11 @@ const fileHandler = (msg: any) => {
       is_image: msg.is_image || false,
       tool_name: msg.tool_name || '',
     },
-  })
+  }
+  _savedAttachments.push(entry)
+  // 最多保留 20 个，防止内存无限增长
+  if (_savedAttachments.length > 20) _savedAttachments.shift()
+  msgs.value.push(entry)
 }
 props.ws.on('file_attachment', fileHandler)
 onUnmounted(() => {
@@ -225,6 +236,7 @@ watch(() => auth.user.value, (u) => {
   if (!u) {
     activeSid.value = ''
     msgs.value = []
+    _savedAttachments.length = 0
     loadSessions()
   }
 })
