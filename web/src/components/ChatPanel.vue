@@ -41,17 +41,27 @@ async function loadSessions() {
     const r = await fetch('/api/sessions', { headers: authHeaders() })
     const data = await r.json()
     sessions.value = (data.sessions || []).sort((a: any, b: any) => (b.updated_at || 0) - (a.updated_at || 0))
-  } catch {}
+  } catch {
+    console.error('[ChatPanel] loadSessions failed')
+    sessions.value = []
+  }
 }
 
 async function loadHistory(sid: string) {
   try {
-    const r = await fetch(`/api/sessions/${sid}/history`)
+    const r = await fetch(`/api/sessions/${sid}/history`, { headers: authHeaders() })
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}))
+      msgs.value = [{ role: 'system', content: `⚠ 无法加载历史: ${(d as any).detail || r.statusText}` }]
+      return
+    }
     const data = await r.json()
     if (data.ok && data.messages) {
       msgs.value = data.messages.map((m: any) => ({ role: m.role, content: m.content || '', time: '' }))
     }
-  } catch {}
+  } catch {
+    console.error('[ChatPanel] loadHistory failed')
+  }
 }
 
 function selectSession(sid: string) {
@@ -72,7 +82,9 @@ async function newSession() {
       sessions.value.unshift(data.session)
       selectSession(data.session.id)
     }
-  } catch {}
+  } catch {
+    console.error('[ChatPanel] newSession failed')
+  }
 }
 
 async function deleteSession(sid: string) {
@@ -169,8 +181,15 @@ props.ws.on('cron_result', (msg: any) => {
 })
 
 props.ws.on('error', (msg: any) => {
-  msgs.value.push({ role: 'system', content: `⚠ ${msg.content || 'Error'}` })
+  msgs.value.push({ role: 'system', content: `⚠ ${msg.content || '发生未知错误'}` })
   streaming.value = false
+  streamingBuf.value = ''
+})
+
+props.ws.on('system_error', (msg: any) => {
+  msgs.value.push({ role: 'system', content: `⚠ ${msg.content || '系统错误'}` })
+  streaming.value = false
+  streamingBuf.value = ''
 })
 
 watch(msgs, scrollBottom, { deep: true })

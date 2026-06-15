@@ -9,7 +9,7 @@ import zipfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, Request, UploadFile, WebSocket, WebSocketDisconnect, Depends
+from fastapi import FastAPI, File, Request, UploadFile, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
