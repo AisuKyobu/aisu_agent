@@ -349,7 +349,6 @@ async def ws_chat(websocket: WebSocket):
                 async for event in conv.astream_events(state, config, version="v2"):
                     kind = event["event"]
                     node = event.get("metadata", {}).get("langgraph_node", "")
-                    logger.info("flow event: %s node=%s", kind, node)
 
                     # ── 节点进入/退出 → 发射给 Monitor ──
                     if kind == "on_chain_start" and node:
@@ -417,13 +416,14 @@ async def ws_chat(websocket: WebSocket):
                     elif kind == "on_tool_end":
                         tool_name = event.get("name", "")
                         output = event["data"].get("output", "")
-                        logger.info("on_tool_end evt: name=%s data_keys=%s output_len=%s",
-                                     tool_name, list(event.get("data", {}).keys()),
-                                     len(str(output)) if output else 0)
+                        # output 可能是 ToolMessage 对象（含 content/name 字段）或纯字符串
+                        if hasattr(output, 'content'):
+                            output_str = str(output.content)
+                        else:
+                            output_str = str(output)
                         tn = _node_times.get(tool_name, {})
                         dur = round(asyncio.get_event_loop().time() - tn.get("enter", asyncio.get_event_loop().time()), 2)
-                        if output and str(output).strip():
-                            output_str = str(output)
+                        if output_str and output_str.strip():
                             await websocket.send_json({"type": "tool_result", "content": output_str[:200], "duration": dur, "tool_name": tool_name, "session_id": sid})
                             try:
                                 sent = await _send_file_attachment(websocket, tool_name, output_str, sid)
