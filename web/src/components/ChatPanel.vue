@@ -137,6 +137,7 @@ function sendChat() {
   if (!text || streaming.value) return
   if (!activeSid.value) { newSession(); return }
   msgs.value.push({ role: 'human', content: text, time: now() })
+  _savedAttachments.length = 0  // 新对话轮次清空旧附件
   streaming.value = true
   streamingBuf.value = ''
   props.ws.send({ type: 'message', content: text, session_id: activeSid.value, source: 'web' })
