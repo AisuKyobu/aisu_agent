@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useAuth } from '../composables/useAuth'
+
+const auth = useAuth()
+function authHeaders(): Record<string, string> {
+  const t = auth.token()
+  return t ? { Authorization: `Bearer ${t}` } : {}
+}
 
 interface CronJob { id: string; interval: number; task: string; next_run?: number; session_id?: string }
 
@@ -17,7 +24,7 @@ async function removeJob(id: string) {
   try {
     await fetch('/api/cron/remove', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ job_id: id }),
     })
     load()

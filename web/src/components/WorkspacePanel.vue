@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useAuth } from '../composables/useAuth'
+
+const auth = useAuth()
+function authHeaders(): Record<string, string> {
+  const t = auth.token()
+  return t ? { Authorization: `Bearer ${t}` } : {}
+}
 
 const files = ref<string[]>([])
 const activeFile = ref<string>('')
@@ -7,7 +14,7 @@ const content = ref<string>('')
 
 async function loadFiles() {
   try {
-    const r = await fetch('/api/workspace')
+    const r = await fetch('/api/workspace', { headers: authHeaders() })
     const data = await r.json()
     files.value = data.files || []
   } catch {}
@@ -16,7 +23,7 @@ async function loadFiles() {
 async function openFile(filename: string) {
   activeFile.value = filename
   try {
-    const r = await fetch(`/api/workspace/${filename}`)
+    const r = await fetch(`/api/workspace/${filename}`, { headers: authHeaders() })
     const data = await r.json()
     content.value = data.content || ''
   } catch {}
@@ -29,7 +36,7 @@ async function saveFile() {
   try {
     await fetch('/api/workspace', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ filename: activeFile.value, content: content.value }),
     })
     saved.value = true

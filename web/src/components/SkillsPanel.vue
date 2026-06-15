@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useAuth } from '../composables/useAuth'
+
+const auth = useAuth()
+function authHeaders(): Record<string, string> {
+  const t = auth.token()
+  return t ? { Authorization: `Bearer ${t}` } : {}
+}
 
 interface Skill { name: string; description: string; enabled: boolean }
 
@@ -20,7 +27,7 @@ async function toggle(name: string, enabled: boolean) {
   try {
     await fetch(`/api/skills/${name}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ enabled }),
     })
     load()
@@ -38,10 +45,10 @@ async function installSkill(file: File) {
   try {
     const form = new FormData()
     form.append('file', file)
-    const r = await fetch('/api/skills/install', { method: 'POST', body: form })
+    const r = await fetch('/api/skills/install', { method: 'POST', headers: authHeaders(), body: form })
     const data = await r.json()
     if (data.ok) {
-      installMsg.value = `已安装 ${(data.names || []).length} 个技能`
+      installMsg.value = `已安装 ${(data.installed_names || []).length} 个技能`
       installOk.value = true
       load()
     } else {
