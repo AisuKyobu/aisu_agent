@@ -606,6 +606,9 @@ def _detect_file_attachment(output_str: str) -> dict | None:
     m = re.match(r'^截图已保存[：:]?\s*(.+)', output_str.strip())
     if m:
         rel_path = m.group(1).strip()
+        # browser_screenshot 返回 "sandbox/xxx"，去掉 "sandbox/" 前缀
+        if rel_path.startswith("sandbox/") or rel_path.startswith("sandbox\\"):
+            rel_path = rel_path.split("/")[-1]
         return _build_attachment(rel_path, sandbox_dir)
 
     m = re.match(r'^已写入\s*(.+)', output_str.strip())
