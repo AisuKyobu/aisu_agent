@@ -1,4 +1,5 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { useAuth } from './useAuth'
 
 export interface WSMessage {
   type: string
@@ -13,9 +14,11 @@ export function useWebSocket() {
   const connected = ref(false)
   const messages = ref<WSMessage[]>([])
   const handlers = new Map<string, Set<(msg: WSMessage) => void>>()
+  const auth = useAuth()
 
   let ws: WebSocket | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  let reconnectSuppressed = false
 
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -36,6 +39,12 @@ export function useWebSocket() {
 
     ws.onclose = () => {
       connected.value = false
+      if (reconnectSuppressed) {
+        reconnectSuppressed = false
+        console.log('[WS] disconnected (auth change), reconnecting')
+        setTimeout(() => connect(), 200)
+        return
+      }
       console.log('[WS] disconnected, reconnecting in 2s')
       scheduleReconnect()
     }
@@ -96,6 +105,13 @@ export function useWebSocket() {
   onUnmounted(() => {
     if (reconnectTimer) clearTimeout(reconnectTimer)
     ws?.close()
+  })
+
+  watch(() => auth.user.value, () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      reconnectSuppressed = true
+      ws.close(1000, 'auth changed')
+    }
   })
 
   return { connected, messages, on, off, send }
