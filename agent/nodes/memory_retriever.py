@@ -15,6 +15,7 @@ def memory_retriever_node(state: AgentState, ctx=None) -> dict:
         from agent.memory.manager import get_manager as get_memory_manager
         mgr = get_memory_manager()
         mgr.ensure_builtin(profile=profile)
+        user_id = state.get("user_id", "guest")
         refl = mgr.get_reflections()
 
         if em in ("direct", "monitor"):
@@ -30,11 +31,13 @@ def memory_retriever_node(state: AgentState, ctx=None) -> dict:
             goal = ""
         k = {"react": 2, "dag": 3, "repair-loop": 3, "research-loop": 5}.get(em, 2)
         similar = mgr.search_similar(goal, k=k) if goal else []
+        # 预取语义记忆快照注入 retrieved_memory
+        prefetch = mgr.prefetch_all(goal, user_id=user_id)
         if similar or refl:
             _log.step_done(f"memory: {len(similar)} similar tasks, refl={'yes' if refl else 'no'}")
         else:
             _log.debug("memory: no results")
-        return {"retrieved_memory": {"similar_tasks": similar, "reflections": refl}}
+        return {"retrieved_memory": {"similar_tasks": similar, "reflections": refl, "prefetch": prefetch}}
     except Exception:
         _log.debug("memory: retrieval skipped")
         return {"retrieved_memory": {"similar_tasks": [], "reflections": ""}}

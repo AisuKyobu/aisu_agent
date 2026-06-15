@@ -75,6 +75,8 @@ def build_system_prompt(
             volatile_parts.append("\n".join(lines))
         if retrieved_memory.get("reflections"):
             volatile_parts.append(f"[经验反思]\n{retrieved_memory['reflections']}")
+        if retrieved_memory.get("prefetch"):
+            volatile_parts.append(retrieved_memory["prefetch"])
     if summary:
         volatile_parts.append(f"[对话摘要]\n{summary}")
 

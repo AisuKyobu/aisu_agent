@@ -50,8 +50,12 @@ class MemoryStore(MemoryProvider):
     def prefetch(self, query: str, **kwargs) -> str:
         if not self._initialized:
             return ""
+        user_id = kwargs.get("user_id", "guest")
         refl = self.get_reflections()
+        facts = self._get_semantic_snapshot(user_id, limit=10)
         parts = []
+        if facts:
+            parts.append(f"[用户记忆]\n{facts}")
         if refl:
             parts.append(f"[经验反思]\n{refl}")
         return "\n\n".join(parts) if parts else ""
@@ -185,6 +189,14 @@ class MemoryStore(MemoryProvider):
                 "INSERT INTO semantic VALUES (?,?,?,?,?,?,?,?)",
                 (sid, key, value, source, now, now, 0.7, user_id))
         self._conn.commit()
+
+    def _get_semantic_snapshot(self, user_id: str = "guest", limit: int = 10) -> str:
+        rows = self._conn.execute(
+            "SELECT key, value FROM semantic WHERE user_id=? ORDER BY last_accessed DESC LIMIT ?",
+            (user_id, limit)).fetchall()
+        if not rows:
+            return ""
+        return "\n".join(f"- {r[0]}: {r[1]}" for r in rows)
 
     def _search_semantic_internal(self, query: str, user_id: str = "guest") -> str:
         terms = [t for t in query.strip().split() if len(t) > 1]

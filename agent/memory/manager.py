@@ -61,11 +61,11 @@ class MemoryManager:
             except Exception as e:
                 logger.warning("Memory provider '%s' init failed: %s", p.name, e)
 
-    def prefetch_all(self, query: str) -> str:
+    def prefetch_all(self, query: str, **kwargs) -> str:
         parts = []
         for p in self._providers:
             try:
-                result = p.prefetch(query)
+                result = p.prefetch(query, **kwargs)
                 if result and result.strip():
                     parts.append(result)
             except Exception as e:
