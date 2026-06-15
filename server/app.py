@@ -327,6 +327,7 @@ async def ws_chat(websocket: WebSocket):
             sid = data.get("session_id", "ws_default")
             src = data.get("source", "web")
             profile = data.get("profile", "dev")
+            msg_user_id = data.get("user_id") or (ws_user["id"] if ws_user else "guest")
             if not text:
                 continue
             _server_log.bind(sid, 0)
@@ -336,7 +337,7 @@ async def ws_chat(websocket: WebSocket):
             await broadcast_monitor_async()
             config = {"configurable": {"thread_id": sid}, "recursion_limit": 100}
             state = {"messages": [HumanMessage(content=text)], "thread_id": sid, "profile": profile,
-                     "user_id": ws_user["id"] if ws_user else "guest"}
+                     "user_id": msg_user_id}
             _echo_buf = ""
 
             try:
