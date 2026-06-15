@@ -1,9 +1,20 @@
 """长期记忆工具 — 仅使用 SQLite 存储，通过 agent/memory/store.py 访问"""
 import re
+import threading
 
 from langchain.tools import tool
 
 from tools.tool_registry import registry
+
+_memory_context = threading.local()
+
+
+def set_memory_user_id(user_id: str):
+    _memory_context.user_id = user_id
+
+
+def _get_memory_user_id() -> str:
+    return getattr(_memory_context, "user_id", "guest")
 
 
 # 不做索引的常见词
@@ -27,10 +38,11 @@ def remember(key: str, value: str) -> str:
     try:
         from agent.memory.manager import get_manager as get_memory_manager
         mgr = get_memory_manager()
-        mgr.remember(key, value, source="agent")
+        uid = _get_memory_user_id()
+        mgr.remember(key, value, source="agent", user_id=uid)
         for word in _extract_keywords(value):
             if word != key:
-                mgr.remember(word, f"{key}: {value}", source="agent:index")
+                mgr.remember(word, f"{key}: {value}", source="agent:index", user_id=uid)
     except Exception as e:
         import logging
         logging.getLogger("aisu.memory").warning("remember failed: %s", e)
@@ -43,7 +55,8 @@ def memory_search(query: str) -> str:
     """搜索长期记忆中的信息。query是搜索关键词。"""
     try:
         from agent.memory.manager import get_manager as get_memory_manager
-        result = get_memory_manager().search_semantic(query)
+        uid = _get_memory_user_id()
+        result = get_memory_manager().search_semantic(query, user_id=uid)
         if result != "未找到匹配的记忆":
             return result
     except Exception as e:

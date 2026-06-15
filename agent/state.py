@@ -27,4 +27,5 @@ class AgentState(TypedDict):
     action_history: List[dict]
     retrieved_memory: dict
     profile: str
+    user_id: str
     node_outputs: dict

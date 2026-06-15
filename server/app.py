@@ -335,7 +335,8 @@ async def ws_chat(websocket: WebSocket):
             update_session_status(sid, status="thinking", source=src)
             await broadcast_monitor_async()
             config = {"configurable": {"thread_id": sid}, "recursion_limit": 100}
-            state = {"messages": [HumanMessage(content=text)], "thread_id": sid, "profile": profile}
+            state = {"messages": [HumanMessage(content=text)], "thread_id": sid, "profile": profile,
+                     "user_id": ws_user["id"] if ws_user else "guest"}
             _echo_buf = ""
 
             try:

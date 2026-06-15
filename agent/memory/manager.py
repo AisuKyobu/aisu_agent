@@ -94,13 +94,13 @@ class MemoryManager:
             return self.builtin.search_similar(goal, k)
         return []
 
-    def remember(self, key: str, value: str, source: str = "") -> None:
+    def remember(self, key: str, value: str, source: str = "", user_id: str = "guest") -> None:
         if self.builtin:
-            self.builtin.remember_value(key, value, source)
+            self.builtin.remember_value(key, value, source, user_id)
 
-    def search_semantic(self, query: str) -> str:
+    def search_semantic(self, query: str, user_id: str = "guest") -> str:
         if self.builtin:
-            return self.builtin.search_semantic(query)
+            return self.builtin.search_semantic(query, user_id)
         return ""
 
     def get_reflections(self) -> str:

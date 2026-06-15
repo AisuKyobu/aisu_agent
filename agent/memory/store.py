@@ -69,15 +69,15 @@ class MemoryStore(MemoryProvider):
             return []
         return self._search_similar_internal(goal, k)
 
-    def remember_value(self, key: str, value: str, source: str = "") -> None:
+    def remember_value(self, key: str, value: str, source: str = "", user_id: str = "guest") -> None:
         if not self._initialized:
             return
-        self._remember_internal(key, value, source)
+        self._remember_internal(key, value, source, user_id)
 
-    def search_semantic(self, query: str) -> str:
+    def search_semantic(self, query: str, user_id: str = "guest") -> str:
         if not self._initialized:
             return "未找到匹配的记忆"
-        return self._search_semantic_internal(query)
+        return self._search_semantic_internal(query, user_id)
 
     def get_reflections(self) -> str:
         if not self._initialized:
@@ -114,8 +114,13 @@ class MemoryStore(MemoryProvider):
         c.execute("""CREATE TABLE IF NOT EXISTS semantic (
             id TEXT PRIMARY KEY, key TEXT, value TEXT,
             source TEXT, created_at REAL, last_accessed REAL,
-            confidence REAL DEFAULT 0.5
+            confidence REAL DEFAULT 0.5, user_id TEXT DEFAULT 'guest'
         )""")
+        # 迁移旧数据：NULL → 'guest'
+        try:
+            c.execute("UPDATE semantic SET user_id='guest' WHERE user_id IS NULL")
+        except Exception:
+            pass
         c.execute("""CREATE TABLE IF NOT EXISTS reflective (
             id TEXT PRIMARY KEY, pattern TEXT, evidence_count INT DEFAULT 1,
             confidence REAL DEFAULT 0.3, created_at REAL
@@ -165,10 +170,10 @@ class MemoryStore(MemoryProvider):
                 })
         return results
 
-    def _remember_internal(self, key: str, value: str, source: str = ""):
+    def _remember_internal(self, key: str, value: str, source: str = "", user_id: str = "guest"):
         import uuid
         existing = self._conn.execute(
-            "SELECT id FROM semantic WHERE key=?", (key,)).fetchone()
+            "SELECT id FROM semantic WHERE key=? AND user_id=?", (key, user_id)).fetchone()
         now = time.time()
         if existing:
             self._conn.execute(
@@ -177,11 +182,11 @@ class MemoryStore(MemoryProvider):
         else:
             sid = "sem_" + uuid.uuid4().hex[:12]
             self._conn.execute(
-                "INSERT INTO semantic VALUES (?,?,?,?,?,?,?)",
-                (sid, key, value, source, now, now, 0.7))
+                "INSERT INTO semantic VALUES (?,?,?,?,?,?,?,?)",
+                (sid, key, value, source, now, now, 0.7, user_id))
         self._conn.commit()
 
-    def _search_semantic_internal(self, query: str) -> str:
+    def _search_semantic_internal(self, query: str, user_id: str = "guest") -> str:
         terms = [t for t in query.strip().split() if len(t) > 1]
         if not terms:
             return "未找到匹配的记忆"
@@ -189,9 +194,10 @@ class MemoryStore(MemoryProvider):
         params = []
         for t in terms:
             params.extend([f"%{t}%", f"%{t}%"])
+        params.append(user_id)
         rows = self._conn.execute(
             f"SELECT key, value, source, confidence FROM semantic "
-            f"WHERE {or_clauses} ORDER BY last_accessed DESC LIMIT 20",
+            f"WHERE ({or_clauses}) AND user_id=? ORDER BY last_accessed DESC LIMIT 20",
             params).fetchall()
         if not rows:
             return "未找到匹配的记忆"
