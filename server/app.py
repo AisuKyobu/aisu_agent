@@ -422,11 +422,11 @@ async def ws_chat(websocket: WebSocket):
                             output_str = str(output)
                             await websocket.send_json({"type": "tool_result", "content": output_str[:200], "duration": dur, "tool_name": tool_name, "session_id": sid})
                             try:
-                                logger.info("tool_end %s -> %s", tool_name, output_str[:80])
-                                await _send_file_attachment(websocket, tool_name, output_str, sid)
-                                logger.info("file_attachment sent for %s", tool_name)
+                                sent = await _send_file_attachment(websocket, tool_name, output_str, sid)
+                                if sent:
+                                    logger.info("📎 file_attachment sent for %s", tool_name)
                             except Exception as e:
-                                logger.exception("file_attachment failed for %s: %s", tool_name, e)
+                                logger.exception("📎 file_attachment failed for %s: %s", tool_name, e)
 
                 # Send agent status（对话完成后汇总）
                 await _send_agent_status(websocket, config, sid)
@@ -660,6 +660,8 @@ async def _send_file_attachment(websocket, tool_name: str, output_str: str, sid:
         att["type"] = "file_attachment"
         att["session_id"] = sid
         await websocket.send_json(att)
+        return True
+    return False
 
 
 # ── Files ──
