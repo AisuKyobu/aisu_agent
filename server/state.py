@@ -135,6 +135,9 @@ def create_session(title: str = "新对话", user_id: str | None = None) -> dict
     }
     sessions.insert(0, session)
     _write_index(sessions)
+    sf = os.path.join(SESSION_DIR, f"{session['id']}.json")
+    with open(sf, "w", encoding="utf-8") as f:
+        json.dump({"thread_id": session["id"], "summary": "", "updated_at": time.time()}, f)
     return session
 
 
