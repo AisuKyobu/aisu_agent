@@ -131,6 +131,12 @@ html, body {
   cursor: pointer;
 }
 
+.auth-back-bar {
+  padding: var(--space-sm) var(--space-xl);
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+}
+
 .page-back-btn {
   display: inline-flex; align-items: center;
   background: none; border: none; color: var(--ink-muted);
