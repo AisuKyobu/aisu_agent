@@ -1,9 +1,9 @@
 # Aisu
 
 基于 LangGraph + LangChain DeepSeek 的多功能 AI Agent Web 面板。  
-支持聊天、网络搜索、文件操作、浏览器自动化、定时任务、技能系统、用户认证、持久记忆。
+支持聊天、网络搜索、文件操作、浏览器自动化、定时任务、技能系统、用户认证、持久记忆与在线反思。
 
-名字：**Aisu**（あいす）= 用户网名 aisukyobu 前四个字母 + Agent。
+适合个人开发者日常使用，也适合作为 AI Agent 项目的公开演示 / 面试展示。
 
 ## 功能一览
 
@@ -18,8 +18,11 @@
 | 定时任务 | 周期性执行 Agent 任务，支持单次/重复 |
 | 会话管理 | 多会话，跨会话历史搜索，断点续聊 |
 | 持久记忆 | 基于语义搜索的长期记忆（记忆、反思、情景记录） |
+| 在线反思 | 每 8 步自动检查是否偏离目标，并写入反思记忆 |
 | 用户认证 | 邮箱注册/登录，JWT Token，用户会话隔离 |
+| 权限隔离 | 游客/普通用户/管理员分权；工作区仅管理员可编辑 |
 | 多 Profile | dev（全功能）、qq（受限工具）自动切换 |
+| 监控面板 | 实时查看会话状态、来源、执行模式、工具使用情况 |
 | Web 面板 | FastAPI + Vue 3，含聊天/监控/技能/指令/定时/设置面板 |
 | AstrBot 接入 | QQ 群聊转接，自动切 qq profile |
 | 公开演示模式 | 每 IP 限制 5 条对话，仅开放搜索/读取工具，适合面试展示 |
@@ -150,8 +153,7 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 │   ├── auth.py                认证（JWT/注册/登录/邮箱验证）
 │   ├── db.py                  用户数据库
 │   ├── state.py               会话状态/WS 广播
-│   ├── rate_limit.py          IP 限流（Demo 模式）
-│   └── templates/             Jinja2 模板
+│   └── rate_limit.py          IP 限流（Demo 模式）
 ├── web/                       Vue 3 前端
 │   └── src/
 │       ├── App.vue            主页面（Tab 切换 + Demo Banner）
@@ -180,3 +182,11 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 | `DEMO_MAX_MSG_PER_IP` | 否 | `5` | Demo 模式每 IP 最大对话数 |
 | `SANDBOX_MODE` | 否 | `host` | 沙箱模式（host/docker） |
 | `LANGCHAIN_API_KEY` | 否 | - | LangSmith 可观测性 |
+
+## 最近更新
+
+- 新增在线反思系统：普通对话无 `task_graph` 时，自动以最近用户消息为目标进行自省。
+- UI  redesigned：加深背景渐变、粉青双 accent、WelcomeCard 入职引导、工具卡片、代码复制按钮。
+- 工作区权限细化：登录用户可查看全部文件，仅管理员可编辑。
+- 监控面板支持游客访问，并按用户身份隔离会话可见范围。
+- 移除旧 Jinja2 模板与 static 前端资源，统一使用 Vue 3 构建产物。
