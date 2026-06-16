@@ -131,6 +131,15 @@ html, body {
   cursor: pointer;
 }
 
+.page-back-btn {
+  display: inline-flex; align-items: center;
+  background: none; border: none; color: var(--ink-muted);
+  font-size: 13px; cursor: pointer; padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.page-back-btn:hover { color: var(--accent); background: var(--accent-bg); }
+
 /* ── Tabs ── */
 .tab-bar {
   display: flex; gap: 0;
