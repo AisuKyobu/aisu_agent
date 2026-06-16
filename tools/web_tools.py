@@ -26,7 +26,12 @@ def _cache_set(key: str, data: str):
     _search_cache[key] = {"data": data, "expires": time.time() + 120}
 
 
-def _search_searxng(query: str, max_results: int) -> list[dict]:
+def _search_searxng(query: str, max_results: int) -> dict:
+    """调用 SearXNG，返回 {results, unresponsive_engines}。
+
+    unresponsive_engines 用于让 LLM 知道是搜索引擎本身被 CAPTCHA/超时拦截，
+    从而停止无意义的重复搜索。
+    """
     import requests
     from config import SEARXNG_BASE_URL, SEARXNG_ENGINES
     url = f"{SEARXNG_BASE_URL}/search"
@@ -34,11 +39,15 @@ def _search_searxng(query: str, max_results: int) -> list[dict]:
     resp = requests.get(url, params={"q": query, "format": "json", "engines": ",".join(engines)},
                         headers={"X-Forwarded-For": "127.0.0.1"}, timeout=15)
     resp.raise_for_status()
-    results = resp.json().get("results", [])[:max_results]
-    return [
-        {"title": r.get("title", ""), "href": r.get("url", ""), "body": r.get("content", "")}
-        for r in results
-    ]
+    data = resp.json()
+    results = data.get("results", [])[:max_results]
+    return {
+        "results": [
+            {"title": r.get("title", ""), "href": r.get("url", ""), "body": r.get("content", "")}
+            for r in results
+        ],
+        "unresponsive_engines": data.get("unresponsive_engines", []),
+    }
 
 
 _SEARCH_ENGINES = {
@@ -46,9 +55,16 @@ _SEARCH_ENGINES = {
 }
 
 
-def _format_results(results: list[dict]) -> str:
+def _format_results(data: dict) -> str:
+    results = data.get("results", []) if isinstance(data, dict) else data
+    unresponsive = data.get("unresponsive_engines", []) if isinstance(data, dict) else []
     if not results:
-        return "未找到结果"
+        lines = [f"搜索完成，未找到与 '{data.get('query', '')}' 相关的结果。"]
+        if unresponsive:
+            reasons = ", ".join(f"{name} ({reason})" for name, reason in unresponsive)
+            lines.append(f"搜索引擎状态：{reasons}。")
+        lines.append("搜索后端暂时不可用，请不要继续换词搜索，直接根据已有知识回答用户。")
+        return " ".join(lines)
     lines = []
     for r in results:
         lines.append(f"- {r['title']}\n  {r['href']}\n  {r['body']}")
@@ -69,8 +85,9 @@ def _execute_search(query: str) -> str:
             last_error = f"未知搜索引擎: {name}"
             continue
         try:
-            results = engine(query, SEARCH_MAX_RESULTS)
-            text = _format_results(results)
+            data = engine(query, SEARCH_MAX_RESULTS)
+            data["query"] = query
+            text = _format_results(data)
             _cache_set(cache_key, text)
             return text
         except Exception as e:

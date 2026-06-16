@@ -113,4 +113,4 @@ def reflect(state: dict) -> Optional[dict]:
     except Exception:
         pass
 
-    return {"hint": f"[自省] {content}", "deviation": deviation}
+    return {"hint": f"[自省] {content}", "deviation": deviation, "halt": deviation}

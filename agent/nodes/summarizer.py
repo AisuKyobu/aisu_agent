@@ -22,6 +22,11 @@ def _safe_context(msgs: list, window: int = 8) -> list:
             tc_ids.add(m.tool_call_id)
     # 第二遍: 清理
     for m in tail:
+        # 过滤掉自省提示，避免 summarizer 被带偏去反问用户
+        if hasattr(m, "type") and m.type == "system":
+            content = str(getattr(m, "content", "") or "")
+            if content.startswith("[自省]"):
+                continue
         is_ai = hasattr(m, "tool_calls") and m.tool_calls
         is_tool = hasattr(m, "tool_call_id") and m.tool_call_id
         if is_ai:
@@ -53,6 +58,27 @@ def _safe_context(msgs: list, window: int = 8) -> list:
     return clean
 
 
+def _all_searches_unproductive(msgs: list) -> bool:
+    """检查最近一轮里 web_search 是否全部无结果或报错。"""
+    last_human = -1
+    for i in range(len(msgs) - 1, -1, -1):
+        if hasattr(msgs[i], "type") and msgs[i].type == "human":
+            last_human = i
+            break
+    recent = msgs[last_human:] if last_human >= 0 else msgs
+    search_results = [m for m in recent if hasattr(m, "type") and m.type == "tool"
+                      and getattr(m, "name", "") == "web_search"]
+    if not search_results:
+        return False
+    failure_markers = ("未找到结果", "搜索后端暂时不可用", "搜索失败", "Suspended", "timeout",
+                       " unreachable", "CAPTCHA")
+    for m in search_results:
+        content = str(getattr(m, "content", "") or "")
+        if not any(marker in content for marker in failure_markers):
+            return False
+    return True
+
+
 def _build_reason(state: AgentState) -> str:
     """根据 state 中的终止原因动态生成总结指令。"""
     msgs = state["messages"]
@@ -70,6 +96,10 @@ def _build_reason(state: AgentState) -> str:
                 "请根据已获取的信息总结当前进展，并向用户说明遇到了什么问题、可以尝试什么替代方案。不要调用任何工具。")
 
     if tt == "search":
+        if _all_searches_unproductive(msgs):
+            return ("本次对话的多次搜索均未返回有效网络信息（搜索引擎可能被 CAPTCHA 拦截或超时）。"
+                    "请直接告知用户当前无法获取实时网络数据，并基于你的通用知识给出一个简要结论。"
+                    "禁止反问用户。不要调用任何工具。")
         return "搜索次数已达上限。请根据搜索中已获取的一切信息，做一次完整的总结回复给用户。不要调用任何工具。"
 
     if tt == "reasoning":

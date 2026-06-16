@@ -154,10 +154,14 @@ def agent_node(state: AgentState, ctx) -> dict:
         context += recent_msgs
 
     # Reflection
+    halt = False
     if state.get("current_step", 0) % REFLECT_INTERVAL == 0 and state.get("current_step", 0) > 0:
         try:
             refl = run_reflection(state)
             if refl and refl.get("hint"): context.append(SystemMessage(content=refl["hint"]))
+            if refl and refl.get("halt"):
+                halt = True
+                _log.event("reflection halt triggered")
         except Exception: pass
 
     # Plan A: 检查实际工具调用是否跨 toolset → 升级 task_type
@@ -214,7 +218,7 @@ def agent_node(state: AgentState, ctx) -> dict:
     elif hasattr(response, 'response_metadata') and 'token_usage' in getattr(response, 'response_metadata', {}):
         budget.update_real(response.response_metadata['token_usage'])
 
-    updates = {"messages": [response], "current_step": state.get("current_step", 0) + 1}
+    updates = {"messages": [response], "current_step": state.get("current_step", 0) + 1, "halt": halt}
 
     # Plan A: 传播 task_type 升级
     if _task_type_changed:

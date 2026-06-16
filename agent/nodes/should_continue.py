@@ -17,6 +17,11 @@ def _get_setting(key: str, default, profile: str = "dev"):
 def should_continue(state: AgentState, ctx=None) -> str:
     _log = NodeLogger("should_continue")
     _log.bind(state.get("thread_id", ""), state.get("current_step", 0))
+
+    if state.get("halt"):
+        _log.event("summarize: reflection halt")
+        return "summarize"
+
     last = state["messages"][-1]
     has_tc = hasattr(last, "tool_calls") and bool(last.tool_calls)
 
