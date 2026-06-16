@@ -28,7 +28,8 @@ from server.state import (get_app, list_cron_jobs, list_skills,
                            create_session, delete_session,
                            update_session_status, broadcast_monitor_update,
                            broadcast_monitor_async, get_sessions_with_status,
-                           get_session_owner, check_session_access)
+                           get_session_owner, check_session_access,
+                           auto_set_session_title)
 from server.auth import get_current_user, require_user, require_admin, decode_jwt
 from server.rate_limit import check_ip_limit, increment_ip_count, extract_client_ip, get_ip_remaining
 
@@ -358,6 +359,7 @@ async def ws_chat(websocket: WebSocket):
             _server_log.user_msg(src, text)
 
             update_session_status(sid, status="thinking", source=src, user_id=viewer_uid)
+            auto_set_session_title(sid, text)
             await broadcast_monitor_async()
             config = {"configurable": {"thread_id": sid}, "recursion_limit": 100}
             state = {"messages": [HumanMessage(content=text)], "thread_id": sid, "profile": profile,

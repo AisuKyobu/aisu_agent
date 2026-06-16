@@ -125,6 +125,32 @@ def rename_session(session_id: str, title: str) -> bool:
     return False
 
 
+def _derive_session_title(text: str, max_len: int) -> str:
+    t = text.strip().replace("\n", " ").replace("\r", " ")
+    t = " ".join(t.split())
+    if len(t) > max_len:
+        return t[:max_len] + "…"
+    return t
+
+
+def auto_set_session_title(session_id: str, text: str) -> bool:
+    """首次用户消息时，自动用前 N 个字设置会话标题。"""
+    if not text or not text.strip():
+        return False
+    from config import SESSION_TITLE_MAX_LEN
+    _ensure_index()
+    sessions = _read_index()
+    for s in sessions:
+        if s["id"] == session_id:
+            title = s.get("title", "")
+            if title and title not in ("新对话", session_id):
+                return False
+            s["title"] = _derive_session_title(text, SESSION_TITLE_MAX_LEN)
+            _write_index(sessions)
+            return True
+    return False
+
+
 def create_session(title: str = "新对话", user_id: str | None = None) -> dict:
     sessions = _read_index()
     session = {

@@ -92,6 +92,7 @@ CMD_ALLOW_ALWAYS = [
 # ===== 消息压缩 =====
 MAX_MESSAGES = 120
 KEEP_MESSAGES = 80
+SESSION_TITLE_MAX_LEN = 16
 MAX_COMPRESS_CONTENT = 200000      # 单条消息压缩时截断长度
 MAX_COMPRESS_TOTAL = 2000000      # 压缩 prompt 中消息文本总长上限
 COMPRESSION_THRESHOLD = 0.75      # token 占比触发阈值（超过 context_window * 0.75 时触发压缩）
