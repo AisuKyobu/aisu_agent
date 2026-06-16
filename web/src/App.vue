@@ -115,6 +115,10 @@ ws.on('demo_remaining', (msg) => {
     </div>
   </template>
 
+  <footer class="app-footer">
+    <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">备案中</a>
+  </footer>
+
   <ToastNotification :toasts="toasts" @remove="(id: number) => toasts = toasts.filter(t => t.id !== id)" />
 </template>
 
@@ -124,4 +128,11 @@ ws.on('demo_remaining', (msg) => {
   padding: 6px 16px; font-size: 12px; flex-shrink: 0;
   border-bottom: 1px solid #fde68a; font-weight: 500;
 }
+.app-footer {
+  text-align: center; padding: 8px 0; flex-shrink: 0;
+  font-size: 11px; color: var(--text-dim);
+  border-top: 1px solid var(--border);
+}
+.app-footer a { color: var(--text-dim); text-decoration: none; }
+.app-footer a:hover { color: var(--text-secondary); }
 </style>
