@@ -320,7 +320,7 @@ async def ws_chat(websocket: WebSocket):
     _echo_buf = ""
 
     # ── Demo mode rate limit ──
-    from config import DEMO_MODE
+    from config import DEMO_MODE, DEMO_MAX_MSG_PER_IP
     client_ip = extract_client_ip(websocket=websocket) if DEMO_MODE else ""
     demo_limit_sent = False
 
