@@ -30,7 +30,7 @@ from server.state import (get_app, list_cron_jobs, list_skills,
                            update_session_status, broadcast_monitor_update,
                            broadcast_monitor_async, get_sessions_with_status,
                            get_session_owner, check_session_access)
-from server.auth import get_current_user, require_user, decode_jwt
+from server.auth import get_current_user, require_user, require_admin, decode_jwt
 from server.rate_limit import check_ip_limit, increment_ip_count, extract_client_ip, get_ip_remaining
 
 
@@ -539,14 +539,14 @@ async def get_skills():
 
 
 @app.patch("/api/skills/{skill_name}")
-async def toggle_skill(skill_name: str, data: SkillToggle, user: dict = Depends(require_user)):
+async def toggle_skill(skill_name: str, data: SkillToggle, user: dict = Depends(require_admin)):
     from agent.skills.registry import get_registry
     get_registry().set_enabled(skill_name, data.enabled)
     return {"ok": True}
 
 
 @app.post("/api/skills/install")
-async def install_skills_zip(file: UploadFile = File(...), user: dict = Depends(require_user)):
+async def install_skills_zip(file: UploadFile = File(...), user: dict = Depends(require_admin)):
     from config import DEMO_MODE
     if DEMO_MODE:
         return {"ok": False, "error": "演示模式已禁用技能安装"}
@@ -776,7 +776,7 @@ async def get_cron():
 
 
 @app.post("/api/cron/remove")
-async def delete_cron(data: CronDelete, user: dict = Depends(require_user)):
+async def delete_cron(data: CronDelete, user: dict = Depends(require_admin)):
     remove_cron_job(data.job_id)
     return {"ok": True}
 

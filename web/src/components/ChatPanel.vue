@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
+import { ref, nextTick, watch, onMounted, onUnmounted, inject } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import type { useWebSocket } from '../composables/useWebSocket'
@@ -10,6 +10,21 @@ marked.setOptions({ breaks: false, gfm: true })
 
 const props = defineProps<{ ws: ReturnType<typeof useWebSocket>; demoMode?: boolean; demoRemaining?: number; demoMax?: number }>()
 const auth = useAuth()
+const addToast = inject<(type: string, text: string) => void>('addToast', () => {})
+
+async function apiCall(url: string, options?: RequestInit): Promise<{ ok: boolean; data: any }> {
+  try {
+    const r = await fetch(url, options)
+    const data = await r.json().catch(() => ({}))
+    if (!r.ok) {
+      throw new Error((data as any).detail || `请求失败 (${r.status})`)
+    }
+    return { ok: true, data }
+  } catch (e: any) {
+    addToast('warn', e.message)
+    return { ok: false, data: null }
+  }
+}
 
 interface FileAttachment { filename: string; path: string; url: string; mime_type: string; is_image: boolean; tool_name: string }
 interface Session { id: string; title: string; created_at?: number }
@@ -43,36 +58,21 @@ function renderContent(text: string): string {
 }
 
 async function loadSessions() {
-  try {
-    const r = await fetch('/api/sessions', { headers: authHeaders() })
-    const data = await r.json()
-    sessions.value = (data.sessions || []).sort((a: any, b: any) => (b.updated_at || 0) - (a.updated_at || 0))
-  } catch {
-    console.error('[ChatPanel] loadSessions failed')
-    sessions.value = []
-  }
+  const { data } = await apiCall('/api/sessions', { headers: authHeaders() })
+  sessions.value = (data?.sessions || []).sort((a: any, b: any) => (b.updated_at || 0) - (a.updated_at || 0))
 }
 
 const _savedAttachments: Message[] = []
 
 async function loadHistory(sid: string) {
-  try {
-    const r = await fetch(`/api/sessions/${sid}/history`, { headers: authHeaders() })
-    if (!r.ok) {
-      const d = await r.json().catch(() => ({}))
-      msgs.value = [{ role: 'system', content: `⚠ 无法加载历史: ${(d as any).detail || r.statusText}` }]
-      return
-    }
-    const data = await r.json()
-    if (data.ok && data.messages) {
-      msgs.value = data.messages.map((m: any) => ({ role: m.role, content: m.content || '', time: '' }))
-    }
-    // 重新追加附件消息（附件只在前端内存中，历史 API 不包含）
-    for (const a of _savedAttachments) {
-      msgs.value.push(a)
-    }
-  } catch {
-    console.error('[ChatPanel] loadHistory failed')
+  const { ok, data } = await apiCall(`/api/sessions/${sid}/history`, { headers: authHeaders() })
+  if (ok && data.messages) {
+    msgs.value = data.messages.map((m: any) => ({ role: m.role, content: m.content || '', time: '' }))
+  } else if (!ok) {
+    msgs.value = [{ role: 'system', content: '⚠ 无法加载历史' }]
+  }
+  for (const a of _savedAttachments) {
+    msgs.value.push(a)
   }
 }
 
@@ -84,28 +84,23 @@ function selectSession(sid: string) {
 }
 
 async function newSession() {
-  try {
-    const r = await fetch('/api/sessions', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ title: '新对话' }),
-    })
-    const data = await r.json()
-    if (data.session) {
-      sessions.value.unshift(data.session)
-      selectSession(data.session.id)
-    }
-  } catch {
-    console.error('[ChatPanel] newSession failed')
+  const { ok, data } = await apiCall('/api/sessions', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ title: '新对话' }),
+  })
+  if (ok && data?.session) {
+    sessions.value.unshift(data.session)
+    selectSession(data.session.id)
   }
 }
 
 async function deleteSession(sid: string) {
-  try {
-    await fetch(`/api/sessions/${sid}`, { method: 'DELETE', headers: authHeaders() })
+  const { ok } = await apiCall(`/api/sessions/${sid}`, { method: 'DELETE', headers: authHeaders() })
+  if (ok) {
     sessions.value = sessions.value.filter(s => s.id !== sid)
     if (activeSid.value === sid) { activeSid.value = ''; msgs.value = [] }
-  } catch {}
+  }
 }
 
 function startRename(s: Session) {
@@ -120,15 +115,15 @@ function startRename(s: Session) {
 async function commitRename(sid: string) {
   const title = renameText.value.trim()
   if (title) {
-    try {
-      await fetch(`/api/sessions/${sid}`, {
-        method: 'PATCH',
-        headers: authHeaders(),
-        body: JSON.stringify({ title }),
-      })
+    const { ok } = await apiCall(`/api/sessions/${sid}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({ title }),
+    })
+    if (ok) {
       const s = sessions.value.find(x => x.id === sid)
       if (s) s.title = title
-    } catch {}
+    }
   }
   renamingId.value = ''
 }

@@ -78,6 +78,14 @@ async def require_user(user: dict | None = Depends(get_current_user)) -> dict:
     return user
 
 
+async def require_admin(user: dict | None = Depends(get_current_user)) -> dict:
+    if not user:
+        raise HTTPException(status_code=401, detail="请先登录")
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    return user
+
+
 # ── Routes ──
 
 @router.post("/register")

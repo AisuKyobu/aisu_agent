@@ -1,11 +1,28 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, inject, computed } from 'vue'
 import { useAuth } from '../composables/useAuth'
 
 const auth = useAuth()
+const addToast = inject<(type: string, text: string) => void>('addToast', () => {})
+const isAdmin = computed(() => auth.user.value?.role === 'admin')
+
 function authHeaders(): Record<string, string> {
   const t = auth.token()
   return t ? { Authorization: `Bearer ${t}` } : {}
+}
+
+async function apiCall(url: string, options?: RequestInit): Promise<{ ok: boolean; data: any }> {
+  try {
+    const r = await fetch(url, options)
+    const data = await r.json().catch(() => ({}))
+    if (!r.ok) {
+      throw new Error((data as any).detail || `请求失败 (${r.status})`)
+    }
+    return { ok: true, data }
+  } catch (e: any) {
+    addToast('warn', e.message)
+    return { ok: false, data: null }
+  }
 }
 
 interface CronJob { id: string; interval: number; task: string; next_run?: number; session_id?: string }
@@ -13,22 +30,17 @@ interface CronJob { id: string; interval: number; task: string; next_run?: numbe
 const jobs = ref<CronJob[]>([])
 
 async function load() {
-  try {
-    const r = await fetch('/api/cron')
-    const data = await r.json()
-    jobs.value = data.jobs || []
-  } catch {}
+  const { data } = await apiCall('/api/cron')
+  jobs.value = data?.jobs || []
 }
 
 async function removeJob(id: string) {
-  try {
-    await fetch('/api/cron/remove', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ job_id: id }),
-    })
-    load()
-  } catch {}
+  const { ok } = await apiCall('/api/cron/remove', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ job_id: id }),
+  })
+  if (ok) load()
 }
 
 function formatInterval(sec: number): string {
@@ -55,8 +67,13 @@ onMounted(load)
           <div class="cron-item-task">{{ j.task }}</div>
           <div class="cron-item-meta">间隔: {{ formatInterval(j.interval) }} · 下次: {{ formatNext(j.next_run) }} · {{ j.session_id || '' }}</div>
         </div>
-        <button class="btn btn-sm" @click="removeJob(j.id)">删除</button>
+        <button v-if="isAdmin" class="btn btn-sm" @click="removeJob(j.id)">删除</button>
+        <span v-else class="cron-admin-hint">仅管理员可操作</span>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.cron-admin-hint { font-size: 11px; color: var(--ink-muted); padding: 4px 8px; }
+</style>

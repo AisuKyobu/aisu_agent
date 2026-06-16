@@ -1,11 +1,28 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, inject, computed } from 'vue'
 import { useAuth } from '../composables/useAuth'
 
 const auth = useAuth()
+const addToast = inject<(type: string, text: string) => void>('addToast', () => {})
+const isAdmin = computed(() => auth.user.value?.role === 'admin')
+
 function authHeaders(): Record<string, string> {
   const t = auth.token()
   return t ? { Authorization: `Bearer ${t}` } : {}
+}
+
+async function apiCall(url: string, options?: RequestInit): Promise<{ ok: boolean; data: any }> {
+  try {
+    const r = await fetch(url, options)
+    const data = await r.json().catch(() => ({}))
+    if (!r.ok) {
+      throw new Error((data as any).detail || `请求失败 (${r.status})`)
+    }
+    return { ok: true, data }
+  } catch (e: any) {
+    addToast('warn', e.message)
+    return { ok: false, data: null }
+  }
 }
 
 interface Skill { name: string; description: string; enabled: boolean }
@@ -16,22 +33,17 @@ const installMsg = ref('')
 const installOk = ref(true)
 
 async function load() {
-  try {
-    const r = await fetch('/api/skills')
-    const data = await r.json()
-    skills.value = data.skills || []
-  } catch {}
+  const { data } = await apiCall('/api/skills')
+  skills.value = data?.skills || []
 }
 
-async function toggle(name: string, enabled: boolean) {
-  try {
-    await fetch(`/api/skills/${name}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ enabled }),
-    })
-    load()
-  } catch {}
+async function toggleSkill(name: string, enabled: boolean) {
+  const { ok } = await apiCall(`/api/skills/${name}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ enabled }),
+  })
+  if (ok) load()
 }
 
 async function installSkill(file: File) {
@@ -45,19 +57,15 @@ async function installSkill(file: File) {
   try {
     const form = new FormData()
     form.append('file', file)
-    const r = await fetch('/api/skills/install', { method: 'POST', headers: authHeaders(), body: form })
-    const data = await r.json()
-    if (data.ok) {
-      installMsg.value = `已安装 ${(data.installed_names || []).length} 个技能`
+    const { ok, data } = await apiCall('/api/skills/install', { method: 'POST', headers: authHeaders(), body: form })
+    if (ok) {
+      installMsg.value = `已安装 ${(data?.installed_names || []).length} 个技能`
       installOk.value = true
       load()
     } else {
-      installMsg.value = data.error || '安装失败'
+      installMsg.value = data?.error || '安装失败'
       installOk.value = false
     }
-  } catch {
-    installMsg.value = '网络错误，请重试'
-    installOk.value = false
   } finally {
     installing.value = false
   }
@@ -80,17 +88,21 @@ onMounted(load)
       <div class="skill-card-name">{{ s.name }}</div>
       <div class="skill-card-desc">{{ s.description }}</div>
       <div class="skill-card-toggle">
-        <label class="toggle">
-          <input type="checkbox" :checked="s.enabled" @change="toggle(s.name, !s.enabled)" />
+        <label class="toggle" :class="{ locked: !isAdmin }" :title="isAdmin ? '' : '需要管理员权限'">
+          <input type="checkbox" :checked="s.enabled" :disabled="!isAdmin" @change="isAdmin && toggleSkill(s.name, !s.enabled)" />
           <span class="toggle-slider" />
         </label>
         <span>{{ s.enabled ? '已启用' : '已禁用' }}</span>
       </div>
     </div>
 
-    <label class="skill-card install-card" :class="{ loading: installing }">
-      <input type="file" accept=".zip" @change="handleFileInput" :disabled="installing" />
-      <template v-if="installing">
+    <label class="skill-card install-card" :class="{ loading: installing, locked: !isAdmin }" :title="isAdmin ? '上传 .zip 技能包安装' : '需要管理员权限才能安装技能'">
+      <input type="file" accept=".zip" @change="handleFileInput" :disabled="installing || !isAdmin" />
+      <template v-if="!isAdmin">
+        <div class="install-icon">🔒</div>
+        <div class="install-label">需要管理员权限</div>
+      </template>
+      <template v-else-if="installing">
         <div class="install-icon spinning">⟳</div>
         <div class="install-label">安装中...</div>
         <div v-if="installMsg" class="install-sub" :class="{ error: !installOk }">{{ installMsg }}</div>
@@ -107,3 +119,9 @@ onMounted(load)
     </label>
   </div>
 </template>
+
+<style scoped>
+.toggle.locked { opacity: 0.45; cursor: not-allowed; }
+.install-card.locked { opacity: 0.5; cursor: not-allowed; border-color: var(--border-light); }
+.install-card.locked:hover { border-color: var(--border-light); color: var(--ink-muted); }
+</style>

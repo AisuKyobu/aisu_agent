@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, provide } from 'vue'
 import ChatPanel from './components/ChatPanel.vue'
 import MonitorPanel from './components/MonitorPanel.vue'
 import SkillsPanel from './components/SkillsPanel.vue'
@@ -14,10 +14,10 @@ import { useAuth } from './composables/useAuth'
 
 const tabs = [
   { id: 'chat', label: '聊天' },
-  { id: 'monitor', label: '监控', authOnly: true },
-  { id: 'skills', label: '技能' },
+  { id: 'monitor', label: '监控' },
+  { id: 'skills', label: '技能', authOnly: true },
   { id: 'workspace', label: '指令', authOnly: true },
-  { id: 'cron', label: '定时' },
+  { id: 'cron', label: '定时', authOnly: true },
   { id: 'settings', label: '设置', adminOnly: true },
 ] as const
 
@@ -59,6 +59,7 @@ function addToast(type: string, text: string) {
     toasts.value = toasts.value.filter(t => t.id !== id)
   }, 4000)
 }
+provide('addToast', addToast)
 
 ws.on('limit_hit', (msg) => {
   addToast('warn', `限制命中: ${msg.reason || '步数/搜索已达上限'}`)

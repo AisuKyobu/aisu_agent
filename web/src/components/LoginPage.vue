@@ -40,13 +40,13 @@ async function doLogin() {
 
 <style scoped>
 .auth-page { display:flex; align-items:center; justify-content:center; min-height:70vh }
-.auth-card { background:var(--bg-card); border-radius:12px; padding:32px; width:100%; max-width:380px; border:1px solid rgba(255,255,255,.05) }
+.auth-card { background:var(--paper); border-radius:12px; padding:32px; width:100%; max-width:380px; border:1px solid var(--border) }
 .auth-card h2 { margin:0 0 20px; font-size:20px }
-.auth-card label { display:block; font-size:13px; color:var(--text-dim); margin-bottom:4px; margin-top:12px }
-.auth-card input { width:100%; padding:10px 12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:6px; color:var(--text-primary); font-size:14px; outline:none; box-sizing:border-box }
-.auth-card input:focus { border-color:var(--pink) }
+.auth-card label { display:block; font-size:13px; color:var(--ink-muted); margin-bottom:4px; margin-top:12px }
+.auth-card input { width:100%; padding:10px 12px; background:var(--surface); border:1px solid var(--border); border-radius:6px; color:var(--ink); font-size:14px; outline:none; box-sizing:border-box }
+.auth-card input:focus { border-color:var(--accent) }
 .auth-card .btn { width:100%; margin-top:20px; padding:12px }
-.auth-error { color:#ff6b6b; font-size:13px; margin:12px 0 0 }
-.auth-switch { margin-top:16px; text-align:center; font-size:13px; color:var(--text-dim) }
-.auth-switch a { color:var(--pink) }
+.auth-error { color:var(--red); font-size:13px; margin:12px 0 0 }
+.auth-switch { margin-top:16px; text-align:center; font-size:13px; color:var(--ink-muted) }
+.auth-switch a { color:var(--accent) }
 </style>
