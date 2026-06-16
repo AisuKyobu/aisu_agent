@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, File, Request, UploadFile, WebSocket, WebSocketDisconnect, Depends, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
@@ -73,6 +73,14 @@ install_auth(app)
 _VUE_DIST = Path(__file__).parent.parent / "web" / "dist"
 if _VUE_DIST.exists():
     app.mount("/assets", StaticFiles(directory=str(_VUE_DIST / "assets")), name="assets")
+
+
+@app.get("/favicon.svg")
+async def favicon():
+    path = _VUE_DIST / "favicon.svg"
+    if path.exists():
+        return FileResponse(str(path), media_type="image/svg+xml")
+    raise HTTPException(status_code=404, detail="favicon not found")
 
 
 class WorkspaceWrite(BaseModel):

@@ -20,7 +20,10 @@ async function doLogin() {
 <template>
   <div class="auth-page">
     <div class="auth-card">
-      <h2>登录</h2>
+      <div class="auth-header">
+        <button type="button" class="btn-back" @click="emit('switchPage', '')">← 返回</button>
+        <h2>登录</h2>
+      </div>
       <form @submit.prevent="doLogin">
         <label>用户名</label>
         <input v-model="username" type="text" autocomplete="username" placeholder="输入用户名" />
@@ -41,7 +44,10 @@ async function doLogin() {
 <style scoped>
 .auth-page { display:flex; align-items:center; justify-content:center; min-height:70vh }
 .auth-card { background:var(--paper); border-radius:12px; padding:32px; width:100%; max-width:380px; border:1px solid var(--border) }
-.auth-card h2 { margin:0 0 20px; font-size:20px }
+.auth-card h2 { margin:0; font-size:20px }
+.auth-header { display:flex; align-items:center; gap:12px; margin-bottom:20px }
+.btn-back { background:none; border:none; color:var(--ink-muted); font-size:13px; cursor:pointer; padding:4px 8px; border-radius:6px; transition:all 120ms }
+.btn-back:hover { color:var(--accent); background:var(--accent-bg) }
 .auth-card label { display:block; font-size:13px; color:var(--ink-muted); margin-bottom:4px; margin-top:12px }
 .auth-card input { width:100%; padding:10px 12px; background:var(--surface); border:1px solid var(--border); border-radius:6px; color:var(--ink); font-size:14px; outline:none; box-sizing:border-box }
 .auth-card input:focus { border-color:var(--accent) }
