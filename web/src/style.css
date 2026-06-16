@@ -124,7 +124,7 @@ html, body {
 .msg-row { display: flex; gap: 10px; }
 .msg-row.is-user { justify-content: flex-end; }
 .msg-row.is-ai { align-items: flex-start; }
-.msg-row.is-sys { justify-content: center; overflow: hidden; min-width: 0; }
+.msg-row.is-sys { justify-content: center; min-width: 0; }
 
 .msg-bubble { max-width: 75%; font-size: 14px; line-height: 1.65; word-break: break-word; }
 
