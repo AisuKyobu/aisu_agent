@@ -91,7 +91,7 @@ onMounted(async () => { await loadProfiles(); await load() })
         <option v-for="p in profiles" :key="p.id" :value="p.id">{{ p.label }}</option>
       </select>
       <button class="btn btn-sm btn-primary" @click="save">{{ saved ? '已保存 ✓' : '保存设置' }}</button>
-      <button class="btn btn-sm" @click="resetAll" style="background:var(--bg-hover)">恢复默认</button>
+      <button class="btn btn-sm" @click="resetAll">恢复默认</button>
       <span style="font-size:11px;color:var(--text-dim);margin-left:auto">修改后即时生效，无需重启</span>
     </div>
     <div class="settings-grid">
@@ -109,9 +109,9 @@ onMounted(async () => { await loadProfiles(); await load() })
 .settings-toolbar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
 .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; overflow-y: auto; }
 .settings-field { display: flex; flex-direction: column; gap: 4px; }
-.settings-field label { font-size: 13px; color: var(--text-primary); font-weight: 500; }
+.settings-field label { font-size: 13px; color: var(--ink); font-weight: 500; }
 .settings-field input {
-  background: var(--bg-hover); color: var(--text-primary);
+  background: var(--surface-hover); color: var(--ink);
   border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; font-size: 13px;
   width: 100%; box-sizing: border-box;
 }

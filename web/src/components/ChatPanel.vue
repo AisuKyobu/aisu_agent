@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, nextTick, watch, onMounted, onUnmounted, inject } from 'vue'
+import { ref, nextTick, watch, onMounted, onUnmounted, onUpdated, inject } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import type { useWebSocket } from '../composables/useWebSocket'
 import { useAuth } from '../composables/useAuth'
+import WelcomeCard from './WelcomeCard.vue'
+import ToolCard from './ToolCard.vue'
 
 // 配置 marked: 不处理换行转 br (由 CSS white-space 处理)，代码块高亮
 marked.setOptions({ breaks: false, gfm: true })
@@ -140,8 +142,47 @@ function sendChat() {
   input.value = ''
 }
 
+async function startWithPrompt(prompt: string) {
+  if (streaming.value || demoBlocked.value) return
+  if (!activeSid.value) await newSession()
+  if (!activeSid.value) return
+  input.value = prompt
+  sendChat()
+}
+
 function scrollBottom() {
   nextTick(() => { const el = msgContainer.value; if (el) el.scrollTop = el.scrollHeight })
+}
+
+function attachCopyButtons() {
+  nextTick(() => {
+    const container = msgContainer.value
+    if (!container) return
+    container.querySelectorAll('.ai-bubble pre').forEach(pre => {
+      if (pre.parentElement?.classList.contains('pre-wrap')) return
+      const wrapper = document.createElement('div')
+      wrapper.className = 'pre-wrap'
+      pre.parentNode?.insertBefore(wrapper, pre)
+      wrapper.appendChild(pre)
+      const btn = document.createElement('button')
+      btn.className = 'btn-copy'
+      btn.textContent = '复制'
+      btn.type = 'button'
+      wrapper.appendChild(btn)
+    })
+  })
+}
+
+function onChatClick(e: MouseEvent) {
+  const btn = (e.target as HTMLElement).closest('.btn-copy')
+  if (!btn) return
+  const pre = btn.parentElement?.querySelector('pre')
+  if (!pre) return
+  navigator.clipboard.writeText(pre.textContent || '').then(() => {
+    const original = btn.textContent
+    btn.textContent = '已复制'
+    setTimeout(() => { btn.textContent = original }, 1500)
+  }).catch(() => {})
 }
 
 function openUrl(url: string) {
@@ -236,7 +277,8 @@ onUnmounted(() => {
   props.ws.off('file_attachment', fileHandler)
 })
 
-watch(msgs, scrollBottom, { deep: true })
+watch(msgs, () => { scrollBottom(); attachCopyButtons() }, { deep: true })
+onUpdated(attachCopyButtons)
 watch(() => auth.user.value, (u) => {
   if (!u) {
     activeSid.value = ''
@@ -289,18 +331,28 @@ onMounted(() => {
 
     <!-- Chat area -->
     <main class="chat-main">
-      <div class="chat-msgs" ref="msgContainer">
-        <div v-if="!msgs.length && !activeSid" class="chat-empty">
-          <div class="empty-icon">⊳</div>
-          <div class="empty-text">选择会话或创建新对话</div>
-        </div>
+      <div class="chat-msgs" ref="msgContainer" @click="onChatClick">
+        <WelcomeCard
+          v-if="!msgs.length && !activeSid"
+          :demo-mode="props.demoMode"
+          :demo-remaining="props.demoRemaining"
+          :demo-max="props.demoMax"
+          @start="newSession"
+          @send="startWithPrompt"
+        />
         <template v-for="(m, i) in msgs" :key="i">
           <div class="msg-row" :class="m.role === 'human' ? 'is-user' : m.role === 'ai' ? 'is-ai' : 'is-sys'">
             <template v-if="m.role === 'human'">
               <div class="msg-bubble user-bubble">{{ m.content }}</div>
             </template>
             <template v-else-if="m.role === 'ai'">
-              <div class="ai-avatar">AI</div>
+              <div class="ai-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/>
+                  <path d="M8 10h.01 M16 10h.01 M9.5 15a3.5 3.5 0 0 0 5 0"/>
+                  <path d="M12 2v2 M12 20v2 M2 12h2 M20 12h2"/>
+                </svg>
+              </div>
               <div class="msg-bubble ai-bubble" v-html="renderContent(m.content)" />
             </template>
             <template v-else-if="m.role === 'attachment' && m.file">
@@ -313,6 +365,9 @@ onMounted(() => {
                   <a :href="m.file.url" target="_blank" class="file-link">{{ m.file.filename }}</a>
                 </template>
               </div>
+            </template>
+            <template v-else-if="m.role === 'system' && (m.content || '').startsWith('⚙')">
+              <ToolCard :content="m.content || ''" />
             </template>
             <template v-else>
               <div class="sys-msg">{{ m.content }}</div>
@@ -328,7 +383,7 @@ onMounted(() => {
         </div>
         <textarea
           v-model="input"
-          placeholder="输入消息... Enter 发送 / Shift+Enter 换行"
+          placeholder="例如：搜索 2026 年 AI Agent 岗位技能要求并整理成清单"
           rows="1"
           @keydown="onKeydown"
           :disabled="streaming || demoBlocked"
