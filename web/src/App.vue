@@ -121,18 +121,3 @@ ws.on('demo_remaining', (msg) => {
 
   <ToastNotification :toasts="toasts" @remove="(id: number) => toasts = toasts.filter(t => t.id !== id)" />
 </template>
-
-<style scoped>
-.demo-banner {
-  background: #fef3c7; color: #92400e; text-align: center;
-  padding: 6px 16px; font-size: 12px; flex-shrink: 0;
-  border-bottom: 1px solid #fde68a; font-weight: 500;
-}
-.app-footer {
-  text-align: center; padding: 8px 0; flex-shrink: 0;
-  font-size: 11px; color: var(--text-dim);
-  border-top: 1px solid var(--border);
-}
-.app-footer a { color: var(--text-dim); text-decoration: none; }
-.app-footer a:hover { color: var(--text-secondary); }
-</style>

@@ -343,14 +343,3 @@ onMounted(() => {
     </main>
   </div>
 </template>
-
-<style scoped>
-.demo-remaining {
-  position: absolute; top: -28px; left: 50%; transform: translateX(-50%);
-  font-size: 11px; color: var(--text-dim); white-space: nowrap;
-  background: var(--bg); padding: 2px 12px; border-radius: 10px;
-  border: 1px solid var(--border);
-}
-.demo-remaining.exhausted { color: var(--red); border-color: var(--red); }
-.chat-foot { position: relative; }
-</style>
