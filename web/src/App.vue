@@ -73,11 +73,13 @@ ws.on('demo_remaining', (msg) => {
 <template>
   <div v-if="demoMode" class="demo-banner">
     演示模式 · 本 IP 剩余 {{ demoRemaining }}/{{ demoMax }} 次对话 · 工具已受限（仅搜索/读取）
+    · <a href="https://github.com/AisuKyobu/aisu_agent" target="_blank" class="demo-gh-link">GitHub</a>
   </div>
   <div class="app-header">
     <span class="app-logo">&gt;_ Aisu</span>
     <div style="display:flex;align-items:center;gap:12px">
-      <span style="font-size:11px;color:var(--text-dim)">
+      <a href="https://github.com/AisuKyobu/aisu_agent" target="_blank" class="gh-badge">GitHub</a>
+      <span style="font-size:11px;color:var(--ink-muted)">
         {{ ws.connected ? '● 已连接' : '○ 连接中...' }}
       </span>
       <template v-if="auth.user.value">

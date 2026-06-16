@@ -139,6 +139,11 @@ html, body {
   font-size: 12px; flex-shrink: 0; font-weight: 500;
   border-bottom: 1px solid oklch(0.88 0.06 85);
 }
+.demo-gh-link {
+  color: var(--accent); font-weight: 700;
+  text-decoration: none; margin-left: 2px;
+}
+.demo-gh-link:hover { text-decoration: underline; }
 
 /* ── Footer ── */
 .app-footer {
@@ -514,6 +519,15 @@ html, body {
   cursor: pointer; transition: all var(--duration-fast) var(--ease-out);
 }
 .btn-auth:hover { border-color: var(--accent); color: var(--accent); }
+
+.gh-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px var(--space-sm); font-size: 11px; font-weight: 600;
+  color: var(--accent); border: 1px solid var(--accent);
+  border-radius: var(--radius-full); text-decoration: none;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.gh-badge:hover { background: var(--accent); color: #fff; }
 
 .file-link { color: var(--blue); text-decoration: underline; }
 .file-link:hover { opacity: 0.8; }
