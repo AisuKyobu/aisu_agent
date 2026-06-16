@@ -605,7 +605,7 @@ async def get_workspace(filename: str, user: dict = Depends(require_user)):
 
 
 @app.post("/api/workspace")
-async def save_workspace(data: WorkspaceWrite, user: dict = Depends(require_user)):
+async def save_workspace(data: WorkspaceWrite, user: dict = Depends(require_admin)):
     write_workspace_file(data.filename, data.content)
     return {"ok": True}
 

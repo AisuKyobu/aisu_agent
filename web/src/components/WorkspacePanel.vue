@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, inject } from 'vue'
+import { ref, onMounted, inject, computed } from 'vue'
 import { useAuth } from '../composables/useAuth'
 
 const auth = useAuth()
 const addToast = inject<(type: string, text: string) => void>('addToast', () => {})
+const isAdmin = computed(() => auth.user.value?.role === 'admin')
 
 async function apiCall(url: string, options?: RequestInit): Promise<{ ok: boolean; data: any }> {
   try {
@@ -57,6 +58,17 @@ async function saveFile() {
 onMounted(loadFiles)
 </script>
 
+<style scoped>
+.readonly-hint {
+  font-size: 12px;
+  color: var(--ink-muted);
+  padding: 4px 8px;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+}
+</style>
+
 <template>
   <div class="workspace-layout">
     <div class="workspace-files">
@@ -64,12 +76,17 @@ onMounted(loadFiles)
         {{ f }}
       </div>
     </div>
-    <div class="workspace-editor">
+      <div class="workspace-editor">
       <div class="workspace-toolbar">
-        <button class="btn btn-sm" @click="saveFile">{{ saved ? '已保存 ✓' : '保存' }}</button>
+        <template v-if="isAdmin">
+          <button class="btn btn-sm btn-primary" @click="saveFile">{{ saved ? '已保存 ✓' : '保存' }}</button>
+        </template>
+        <template v-else>
+          <span class="readonly-hint">仅管理员可编辑，当前只读</span>
+        </template>
         <span v-if="activeFile" style="font-size:12px;color:var(--ink-muted);align-self:center">{{ activeFile }}</span>
       </div>
-      <textarea v-model="content" placeholder="选择一个文件开始编辑..." spellcheck="false" />
+      <textarea v-model="content" :readonly="!isAdmin" :placeholder="isAdmin ? '选择一个文件开始编辑...' : '选择一个文件查看内容...'" spellcheck="false" />
     </div>
   </div>
 </template>
