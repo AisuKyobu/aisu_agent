@@ -94,6 +94,7 @@ _TOOLS_BY_MODE = {
     "planning": _TOOLS_PLANNING,
 }
 
+llm_plain = llm
 llm_with_tools = llm.bind_tools(_FILTERED_TOOLS)
 llm_search = llm.bind_tools(_TOOLS_SEARCH)
 llm_action = llm.bind_tools(_TOOLS_ACTION)
@@ -126,10 +127,10 @@ def _load_system_prompt() -> str:
     return content if content else SYSTEM_PROMPT_DEFAULT
 
 _ctx = GraphContext(
-    llm=llm_deterministic, llm_search=llm_search, llm_action=llm_action,
-    llm_reasoning=llm_reasoning, llm_planning=llm_planning,
-    llm_with_tools=llm_with_tools, workspace=_workspace,
-    system_prompt=_load_system_prompt(),
+    llm=llm_deterministic, llm_plain=llm_plain, llm_search=llm_search,
+    llm_action=llm_action, llm_reasoning=llm_reasoning,
+    llm_planning=llm_planning, llm_with_tools=llm_with_tools,
+    workspace=_workspace, system_prompt=_load_system_prompt(),
 )
 
 def build_conversation_graph(checkpointer=None, **_):

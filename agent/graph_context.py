@@ -9,7 +9,8 @@ from agent.workspace import Workspace
 
 @dataclass
 class GraphContext:
-    llm: BaseChatModel                       # 无工具绑定
+    llm: BaseChatModel                       # 只读工具绑定（memory_search / session_search / session_list）
+    llm_plain: BaseChatModel                 # 完全无工具绑定，用于总结等终止节点
     llm_search: BaseChatModel                # web_search/web_fetch
     llm_action: BaseChatModel                # 文件/命令/浏览器/计划
     llm_reasoning: BaseChatModel             # 搜索/文件/命令

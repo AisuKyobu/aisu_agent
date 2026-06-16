@@ -52,9 +52,11 @@ function authHeaders(): Record<string, string> {
 function renderContent(text: string): string {
   if (!text) return ''
   // 将 workspace/xxx 路径渲染为下载链接
-  text = text.replace(/(workspace\/[^\s\n\r,，。；;]+)/g, (m) =>
-    `<a href="/api/files/${encodeURI(m)}" target="_blank" class="file-link">${m}</a>`
-  )
+  // 排除反引号、<> 以及常见中文标点，避免把 `workspace/xxx` 或标签边界一起抓进去
+  text = text.replace(/(?<![\w/])workspace\/[^\s\n\r,，。；;<>「」【】`]+(?![\w/])/g, (m) => {
+    const safe = m.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    return `<a href="/api/files/${encodeURI(m)}" target="_blank" class="file-link">${safe}</a>`
+  })
   const html = marked.parse(text) as string
   return DOMPurify.sanitize(html)
 }

@@ -3,7 +3,7 @@ import platform
 
 from langchain_core.messages import AIMessage, RemoveMessage, SystemMessage
 
-from agent.common import (context_refresh, invoke_with_retry)
+from agent.common import (context_refresh, invoke_with_retry, sanitize_raw_tool_calls)
 from agent.compressor import compress_messages_structured, get_budget
 from agent.logger import NodeLogger
 from agent.core.reflector import REFLECT_INTERVAL, reflect as run_reflection
@@ -203,6 +203,10 @@ def agent_node(state: AgentState, ctx) -> dict:
                 tc_args = tc.get("args", {}) if isinstance(tc, dict) else {}
                 if not tc_args.get("session_id") and tid:
                     tc_args["session_id"] = tid
+
+    # 清理 content 里可能泄漏的原始工具调用标记
+    if isinstance(getattr(response, "content", None), str):
+        response.content = sanitize_raw_tool_calls(response.content)
 
     # ── 真实 token 使用量跟踪 ──
     if hasattr(response, 'usage_metadata') and response.usage_metadata:

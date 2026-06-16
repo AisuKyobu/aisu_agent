@@ -18,8 +18,8 @@ interface Tab { id: string; label: string; authOnly?: boolean; adminOnly?: boole
 const tabs: Tab[] = [
   { id: 'chat', label: '聊天' },
   { id: 'monitor', label: '监控' },
-  { id: 'skills', label: '技能', authOnly: true },
-  { id: 'workspace', label: '指令', authOnly: true },
+  { id: 'skills', label: '技能' },
+  { id: 'workspace', label: '指令' },
   { id: 'cron', label: '定时', authOnly: true },
   { id: 'settings', label: '设置', adminOnly: true },
 ]

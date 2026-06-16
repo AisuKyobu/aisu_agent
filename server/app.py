@@ -596,7 +596,7 @@ async def install_skills_zip(file: UploadFile = File(...), user: dict = Depends(
 # ── Workspace ──
 
 @app.get("/api/workspace")
-async def list_workspace(user: dict = Depends(require_user)):
+async def list_workspace(user: dict | None = Depends(get_current_user)):
     import os
     from config import WORKSPACE_DIR
     files = []
@@ -610,7 +610,7 @@ async def list_workspace(user: dict = Depends(require_user)):
 
 
 @app.get("/api/workspace/{filename:path}")
-async def get_workspace(filename: str, user: dict = Depends(require_user)):
+async def get_workspace(filename: str, user: dict | None = Depends(get_current_user)):
     return {"content": read_workspace_file(filename)}
 
 

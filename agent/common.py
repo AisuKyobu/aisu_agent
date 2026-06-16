@@ -1,6 +1,32 @@
 """Shared utilities for agent graphs."""
+import re
+
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
+
+
+_RAW_TOOL_MARKERS = [
+    r"<｜｜DSML｜｜tool_calls",
+    r"<｜｜DSML｜｜invoke",
+    r"<tool_calls",
+    r"<invoke",
+]
+_RAW_TOOL_MARKER_RE = re.compile("|".join(_RAW_TOOL_MARKERS))
+
+
+def sanitize_raw_tool_calls(content: str) -> str:
+    """清理 LLM 在 content 里幻觉出的原始工具调用标记。"""
+    if not isinstance(content, str) or not content:
+        return content
+    patterns = [
+        (r"<｜｜DSML｜｜tool_calls>.*?</｜｜DSML｜｜tool_calls>", re.DOTALL),
+        (r"<｜｜DSML｜｜invoke[^>]*>.*?</｜｜DSML｜｜invoke>", re.DOTALL),
+        (r"<tool_calls>.*?</tool_calls>", re.DOTALL),
+        (r"<invoke[^>]*>.*?</invoke>", re.DOTALL),
+    ]
+    for pat, flags in patterns:
+        content = re.sub(pat, "", content, flags=flags)
+    return content.strip()
 
 
 def invoke_with_retry(llm_instance, msgs, max_retries=3, label="LLM"):
@@ -21,10 +47,10 @@ def invoke_with_retry(llm_instance, msgs, max_retries=3, label="LLM"):
                 tools = [tc.get("name","") if isinstance(tc, dict) else getattr(tc,"name","") for tc in result.tool_calls]
             content = str(getattr(result, "content", "")) if result else ""
 
-            # 检测 raw XML tool call 泄漏
-            _has_raw = ("<tool_calls>" in content or "<invoke" in content) and not tools
+            # 检测 raw XML/DSML tool call 泄漏
+            _has_raw = bool(_RAW_TOOL_MARKER_RE.search(content)) and not tools
             if _has_raw and attempt < max_retries - 1:
-                _log.warn(f"LLM raw XML tool call detected, retry {attempt + 1}")
+                _log.warn(f"LLM raw XML/DSML tool call detected, retry {attempt + 1}")
                 # 标记以便调用方升级 task_type
                 if result and hasattr(result, "content"):
                     setattr(result, "_raw_tool_call", True)

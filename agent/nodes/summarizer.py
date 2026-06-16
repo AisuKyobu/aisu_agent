@@ -1,7 +1,7 @@
 """Summarizer node — 统一终止出口: 工具/步数超限 / needs_human 均在此外送 LLM 总结回复"""
 from langchain_core.messages import AIMessage, SystemMessage
 
-from agent.common import invoke_with_retry
+from agent.common import invoke_with_retry, sanitize_raw_tool_calls
 from agent.logger import NodeLogger
 from agent.state import AgentState
 
@@ -95,7 +95,8 @@ def summarizer_node(state: AgentState, ctx=None) -> dict:
         SystemMessage(content=reason),
         *_safe_context(msgs, window=8),
     ]
-    response = invoke_with_retry(ctx.llm, context, label="summarizer")
+    llm = getattr(ctx, "llm_plain", None) or ctx.llm
+    response = invoke_with_retry(llm, context, label="summarizer")
     if response is None:
         _log.warn("null response")
         return {"messages": [AIMessage(content="任务已达到执行上限，请稍后重试或调整需求。")]}
@@ -103,5 +104,13 @@ def summarizer_node(state: AgentState, ctx=None) -> dict:
     if hasattr(response, "tool_calls") and response.tool_calls:
         response.tool_calls = []
         _log.debug("stripped hallucinated tool_calls from summarizer response")
+    # 清理 content 里的原始工具调用标记
+    content = str(getattr(response, "content", "") or "")
+    clean_content = sanitize_raw_tool_calls(content)
+    if clean_content != content:
+        response.content = clean_content
+        _log.debug("sanitized raw tool call markup from summarizer content")
+    if not clean_content:
+        response.content = "任务已达到执行上限，已根据已有信息完成总结。"
     _log.step_done(f"done ({len(str(getattr(response,'content','')))} chars)")
     return {"messages": [response]}
