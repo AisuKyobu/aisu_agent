@@ -71,7 +71,7 @@ docker compose up -d --build
 
 ## Docker 公开演示模式（DEMO MODE）
 
-适合面试展示或公开试用，每 IP 限制 5 条对话，仅开放只读安全工具。
+公开试用模式，每 IP 限制 5 条对话，仅开放只读安全工具。
 
 ```bash
 # 需要 .env 包含 DEEPSEEK_API_KEY

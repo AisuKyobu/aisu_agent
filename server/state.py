@@ -231,23 +231,56 @@ def remove_cron_job(job_id: str):
 _ws_clients: Set[WebSocket] = set()
 _main_loop: asyncio.AbstractEventLoop = None
 _active_status: dict[str, dict] = {}  # sid → {status, task_type, step, tokens, source}
+_ws_user_info: dict[WebSocket, dict] = {}  # ws → {user_id, role}
 
 SOURCE_ICONS = {"web": "🖥", "qq": "💬", "cron": "⏰", "sub": "📦", "": "❓"}
 
 
+def _normalize_user_id(uid):
+    """统一 guest 会话的 owner 为 None"""
+    if uid is None or uid == "" or str(uid).lower() == "guest":
+        return None
+    return str(uid)
+
+
+def _filter_sessions_for_viewer(sessions: list[dict], viewer_user_id: str | None,
+                                is_admin: bool = False) -> list[dict]:
+    """按 viewer 过滤会话：游客只看游客，登录用户看游客+自己，管理员看全部"""
+    if is_admin:
+        return sessions
+    viewer_user_id = _normalize_user_id(viewer_user_id)
+    filtered = []
+    for s in sessions:
+        owner = _normalize_user_id(s.get("user_id"))
+        if owner is None or owner == viewer_user_id:
+            filtered.append(s)
+    return filtered
+
+
 def update_session_status(sid: str, **kwargs):
     """更新活跃会话状态；内部会话 (sub_/cron_/_) 不写入索引"""
+    uid = _normalize_user_id(kwargs.pop("user_id", None))
     _active_status[sid] = {"updated_at": time.time(), **kwargs}
     # 内部会话不注册到前端侧边栏
     if sid.startswith("sub_") or sid.startswith("cron_") or sid.startswith("_"):
         return
     _ensure_index()
     index = _read_index()
-    if not any(s["id"] == sid for s in index):
+    changed = False
+    for s in index:
+        if s["id"] == sid:
+            # 补充/修正 owner
+            if uid is not None and s.get("user_id") != uid:
+                s["user_id"] = uid
+                changed = True
+            break
+    else:
         title = sid
         if sid.startswith("qq_"): title = "QQ-" + sid[3:11]
         elif sid.startswith("web_"): title = "Web-" + sid[4:12]
-        index.insert(0, {"id": sid, "title": title, "created_at": time.time()})
+        index.insert(0, {"id": sid, "title": title, "created_at": time.time(), "user_id": uid})
+        changed = True
+    if changed:
         _write_index(index)
 
 
@@ -259,8 +292,9 @@ def _cleanup_stale_status():
         del _active_status[sid]
 
 
-def get_sessions_with_status() -> list[dict]:
-    """合并 sessions/ JSON 持久数据 + 内存活跃状态"""
+def get_sessions_with_status(viewer_user_id: str | None = None,
+                             is_admin: bool = False) -> list[dict]:
+    """合并 sessions/ JSON 持久数据 + 内存活跃状态，并按 viewer 过滤"""
     _cleanup_stale_status()
     index = _read_index()
     # 过滤内部会话
@@ -273,7 +307,8 @@ def get_sessions_with_status() -> list[dict]:
     result = []
     for s in index:
         tid = s["id"]
-        entry = {"id": tid, "title": s.get("title", tid), "created_at": s.get("created_at", 0)}
+        entry = {"id": tid, "title": s.get("title", tid), "created_at": s.get("created_at", 0),
+                 "user_id": s.get("user_id")}
         # 读持久化的 last_state
         sf = os.path.join(SESSION_DIR, f"{tid}.json")
         if os.path.isfile(sf):
@@ -303,25 +338,34 @@ def get_sessions_with_status() -> list[dict]:
         entry["execution_mode"] = entry.get("last_state", {}).get("execution_mode", "")
         result.append(entry)
     result.sort(key=lambda x: x.get("updated_at", 0), reverse=True)
-    return result
+    return _filter_sessions_for_viewer(result, viewer_user_id, is_admin)
 
 
 def broadcast_monitor_update():
-    """广播全局 Monitor 更新给所有前端 WS 客户端"""
-    data = {"type": "monitor_global", "sessions": get_sessions_with_status()}
+    """广播全局 Monitor 更新给所有前端 WS 客户端（按用户过滤）"""
     loop = _main_loop
     if not loop:
         return
+    all_sessions = get_sessions_with_status()
     for ws in list(_ws_clients):
+        info = _ws_user_info.get(ws, {})
+        sessions = _filter_sessions_for_viewer(
+            all_sessions, info.get("user_id"), info.get("role") == "admin"
+        )
+        data = {"type": "monitor_global", "sessions": sessions}
         asyncio.run_coroutine_threadsafe(ws.send_json(data), loop)
 
 
 async def broadcast_monitor_async():
     """异步版广播，从事件循环内直接调用"""
-    data = {"type": "monitor_global", "sessions": get_sessions_with_status()}
+    all_sessions = get_sessions_with_status()
     for ws in list(_ws_clients):
+        info = _ws_user_info.get(ws, {})
+        sessions = _filter_sessions_for_viewer(
+            all_sessions, info.get("user_id"), info.get("role") == "admin"
+        )
         try:
-            await ws.send_json(data)
+            await ws.send_json({"type": "monitor_global", "sessions": sessions})
         except Exception:
             pass
 
@@ -331,12 +375,17 @@ def set_main_loop(loop: asyncio.AbstractEventLoop):
     _main_loop = loop
 
 
-def register_ws(ws: WebSocket):
+def register_ws(ws: WebSocket, user: dict | None = None):
     _ws_clients.add(ws)
+    _ws_user_info[ws] = {
+        "user_id": user.get("id") if user else None,
+        "role": user.get("role") if user else None,
+    }
 
 
 def unregister_ws(ws: WebSocket):
     _ws_clients.discard(ws)
+    _ws_user_info.pop(ws, None)
 
 
 def broadcast_sync(data: dict):
@@ -346,5 +395,18 @@ def broadcast_sync(data: dict):
         _log.warn("broadcast: no main loop")
         return
     _log.debug(f"broadcast: type={data.get('type','?')} to {len(_ws_clients)} clients")
+    is_monitor = data.get("type") == "monitor_global"
+    all_sessions = None
+    if is_monitor:
+        all_sessions = get_sessions_with_status()
     for ws in list(_ws_clients):
-        asyncio.run_coroutine_threadsafe(ws.send_json(data), loop)
+        payload = data
+        if is_monitor:
+            info = _ws_user_info.get(ws, {})
+            payload = {
+                "type": "monitor_global",
+                "sessions": _filter_sessions_for_viewer(
+                    all_sessions, info.get("user_id"), info.get("role") == "admin"
+                ),
+            }
+        asyncio.run_coroutine_threadsafe(ws.send_json(payload), loop)

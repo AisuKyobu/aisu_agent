@@ -144,8 +144,10 @@ async def api_list_sessions(user: dict | None = Depends(get_current_user)):
 
 
 @app.get("/api/monitor/sessions")
-async def api_monitor_sessions(user: dict = Depends(require_user)):
-    return {"sessions": get_sessions_with_status()}
+async def api_monitor_sessions(user: dict | None = Depends(get_current_user)):
+    if user and user.get("role") == "admin":
+        return {"sessions": get_sessions_with_status(is_admin=True)}
+    return {"sessions": get_sessions_with_status(viewer_user_id=user.get("id") if user else None)}
 
 
 @app.post("/api/sessions")
@@ -175,7 +177,7 @@ async def api_rename_session(session_id: str, data: SessionRename, user: dict | 
 
 # ── WebSocket Chat (Streaming) ──
 
-async def _send_agent_status(websocket, config, sid):
+async def _send_agent_status(websocket, config, sid, user_id: str | None = None):
     try:
         conv = get_app()
         snapshot = await conv.aget_state(config)
@@ -233,17 +235,18 @@ async def _send_agent_status(websocket, config, sid):
             execution_mode=sv.get("execution_mode", "react"),
             step=sv.get("current_step", 0),
             max_steps=sv.get("max_steps", 10),
-            tools_used=sv_tools)
+            tools_used=sv_tools,
+            user_id=user_id)
         broadcast_monitor_update()
         for m in sv.get("messages", []):
             if hasattr(m, "content") and isinstance(m.content, str) and m.content.startswith("[系统错误]"):
                 await websocket.send_json({"type": "system_error", "content": m.content})
-                update_session_status(sid, status="error")
+                update_session_status(sid, status="error", user_id=user_id)
                 broadcast_monitor_update()
                 break
     except Exception:
         logger.exception("agent_status failed")
-        update_session_status(sid, status="error")
+        update_session_status(sid, status="error", user_id=user_id)
 
 
 async def _save_session_snapshot(conv, config, sid, src="web"):
@@ -313,7 +316,8 @@ async def ws_chat(websocket: WebSocket):
         await websocket.close()
         return
 
-    register_ws(websocket)
+    viewer_uid = ws_user["id"] if ws_user else None
+    register_ws(websocket, ws_user)
     loop = asyncio.get_event_loop()
 
     _echo_prefixes = ("你已经没有剩余步数", "工具调用次数即将达到上限", "你已经反复调用了多次工具")
@@ -361,7 +365,7 @@ async def ws_chat(websocket: WebSocket):
             _server_log.bind(sid, 0)
             _server_log.user_msg(src, text)
 
-            update_session_status(sid, status="thinking", source=src)
+            update_session_status(sid, status="thinking", source=src, user_id=viewer_uid)
             await broadcast_monitor_async()
             config = {"configurable": {"thread_id": sid}, "recursion_limit": 100}
             state = {"messages": [HumanMessage(content=text)], "thread_id": sid, "profile": profile,
@@ -460,7 +464,7 @@ async def ws_chat(websocket: WebSocket):
                                 logger.exception("📎 file_attachment failed for %s: %s", tool_name, e)
 
                 # Send agent status（对话完成后汇总）
-                await _send_agent_status(websocket, config, sid)
+                await _send_agent_status(websocket, config, sid, user_id=viewer_uid)
                 await _save_session_snapshot(conv, config, sid, src)
 
                 # ── 日志：最终回复 ──
