@@ -10,10 +10,9 @@ import zipfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, Request, UploadFile, WebSocket, WebSocketDisconnect, Depends, HTTPException
+from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
@@ -71,15 +70,9 @@ from server.auth import install_auth
 install_auth(app)
 
 # ── 静态资源 ──
-_STATIC_DIR = Path(__file__).parent / "static"
-if _STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
-
 _VUE_DIST = Path(__file__).parent.parent / "web" / "dist"
 if _VUE_DIST.exists():
     app.mount("/assets", StaticFiles(directory=str(_VUE_DIST / "assets")), name="assets")
-
-templates = Jinja2Templates(directory="server/templates")
 
 
 class WorkspaceWrite(BaseModel):
@@ -115,23 +108,14 @@ class ProfileSwitch(BaseModel):
 # ── Page ──
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
+async def index():
     vue_index = _VUE_DIST / "index.html"
     if vue_index.exists():
         return HTMLResponse(vue_index.read_text(encoding="utf-8"))
-    skills = list_skills()
-    agents_md = read_workspace_file("AGENTS.md")
-    user_md = read_workspace_file("USER.md")
-    cron_jobs = list_cron_jobs()
-    return templates.TemplateResponse(
-        request,
-        "index.html",
-        {
-            "skills": skills,
-            "agents_md": agents_md,
-            "user_md": user_md,
-            "cron_jobs": cron_jobs,
-        },
+    return HTMLResponse(
+        "<html><body style='font-family:sans-serif;padding:40px'>"
+        "<h1>Aisu</h1><p>前端未构建，请先运行 <code>npm run build</code>。</p>"
+        "</body></html>"
     )
 
 

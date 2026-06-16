@@ -12,7 +12,7 @@ from agent.skills.registry import get_registry as get_skill_registry
 from agent.state import AgentState
 from agent.system_prompt import build_system_prompt, join_prompt_parts
 from agent.types import TaskType
-from config import REASONING_MAX_FILE_READS, REASONING_MAX_SEARCH, REASONING_MAX_TOOL_CALLS
+
 from tools.plan_tools import format_plan, format_task_graph, load_plan, load_task_graph, set_plan_thread_id
 from tools.memory_tools import set_memory_user_id
 from tools.toolsets import set_toolset_profile

@@ -66,10 +66,6 @@ if DEMO_MODE:
     TOOL_ALLOW = ["web_search", "web_fetch", "read_file"]
     TOOL_DENY = []
 
-# Toolset 级开关（替代逐个工具 allow/deny）
-TOOLSET_ENABLED = ["*"]   # ["*"] 表示全部启用
-TOOLSET_DISABLED = []      # 禁用的工具集，优先级高于 ENABLED
-
 CMD_ALLOW = [
     # Windows
     "dir", "type ", "echo ", "mkdir ",
