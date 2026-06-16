@@ -73,7 +73,7 @@ ws.on('demo_remaining', (msg) => {
 <template>
   <div v-if="demoMode" class="demo-banner">
     演示模式 · 本 IP 剩余 {{ demoRemaining }}/{{ demoMax }} 次对话 · 工具已受限（仅搜索/读取）
-    · <a href="https://github.com/AisuKyobu/aisu_agent" target="_blank" class="demo-gh-link">GitHub</a>
+    · <a href="https://github.com/AisuKyobu/aisu_agent" target="_blank" class="demo-gh-link">github.com/AisuKyobu/aisu_agent</a>
   </div>
   <div class="app-header">
     <span class="app-logo">&gt;_ Aisu</span>
