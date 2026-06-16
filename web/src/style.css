@@ -125,6 +125,7 @@ html, body {
   flex-shrink: 0; z-index: var(--z-sticky);
 }
 .app-logo {
+  display: inline-flex; align-items: center; gap: 6px;
   font-weight: 700; font-size: 14px; color: var(--accent);
   font-family: var(--font-mono); letter-spacing: 0.3px;
 }

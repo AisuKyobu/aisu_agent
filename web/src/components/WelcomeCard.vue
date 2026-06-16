@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import LogoIcon from './LogoIcon.vue'
 
 const props = defineProps<{
   demoMode?: boolean
@@ -36,7 +37,7 @@ const prompts = computed(() => props.demoMode ? demoPrompts : fullPrompts)
 
 <template>
   <div class="welcome-card">
-    <div class="welcome-logo">&gt;_</div>
+    <div class="welcome-logo"><LogoIcon :size="24" /></div>
     <div class="welcome-title">让 Aisu 帮你准备下一场面试</div>
     <div class="welcome-subtitle">
       直接描述目标，Aisu 会自己决定搜索、读文件、写代码还是浏览网页。
