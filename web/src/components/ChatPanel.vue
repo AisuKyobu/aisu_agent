@@ -51,9 +51,12 @@ function authHeaders(): Record<string, string> {
 
 function renderContent(text: string): string {
   if (!text) return ''
-  // 将 workspace/xxx 路径渲染为下载链接
-  // 排除反引号、<> 以及常见中文标点，避免把 `workspace/xxx` 或标签边界一起抓进去
-  text = text.replace(/(?<![\w/\`])workspace\/[^\s\n\r,，。；;<>「」【】`]+(?![\w/\`])/g, (m) => {
+  // 将项目文件路径渲染为下载链接
+  // 支持 workspace/ skills/ tests/ agent/ server/ tools/ web/ 等目录下的文件
+  // 要求必须有常见文件扩展名，避免把普通单词/目录误识别为路径
+  // 排除反引号、<> 以及常见中文标点，避免在代码片段中生成未渲染的 <a>
+  const PATH_RE = /(?<![\w\/\`])(?:workspace|skills|tests|agent|server|tools|web)\/[^\s\n\r,，。；;<>「」【】`]+\.(?:py|md|txt|json|yaml|yml|js|ts|css|vue|html|sh|ps1|bat|pdf|csv|toml|cfg|ini|sql|xml|svg|png|jpg|jpeg|gif|env|example|lock)(?![\w\/\`])/gi
+  text = text.replace(PATH_RE, (m) => {
     const safe = m.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     return `<a href="/api/files/${encodeURI(m)}" target="_blank" class="file-link">${safe}</a>`
   })
