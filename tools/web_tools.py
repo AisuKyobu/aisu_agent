@@ -3,16 +3,34 @@ import time
 
 from langchain.tools import tool
 
-from config import SEARCH_CACHE_SIZE, SEARCH_MAX_RESULTS
+from config import SEARCH_CACHE_SIZE, SEARCH_MAX_RESULTS, REDIS_SEARCH_TTL
 
 _search_cache = {}
 
 
 def _cache_key(query: str) -> str:
-    return hashlib.md5(query.encode()).hexdigest()
+    return f"aisu:search:{hashlib.md5(query.encode()).hexdigest()}"
+
+
+def _redis_client():
+    try:
+        from server.redis_client import get_redis
+        return get_redis()
+    except Exception:
+        return None
 
 
 def _cache_get(key: str) -> str | None:
+    # Redis 优先
+    r = _redis_client()
+    if r:
+        try:
+            val = r.get(key)
+            if val:
+                return val.decode("utf-8")
+        except Exception:
+            pass
+    # 内存回退
     entry = _search_cache.get(key)
     if entry and entry["expires"] > time.time():
         return entry["data"]
@@ -20,6 +38,14 @@ def _cache_get(key: str) -> str | None:
 
 
 def _cache_set(key: str, data: str):
+    # 同时写 Redis（主）和内存（回退）
+    r = _redis_client()
+    if r:
+        try:
+            r.setex(key, REDIS_SEARCH_TTL, data)
+        except Exception:
+            pass
+    # 内存缓存也保留一份，作为 Redis 不可用时的回退
     if len(_search_cache) >= SEARCH_CACHE_SIZE:
         oldest = min(_search_cache.keys(), key=lambda k: _search_cache[k]["expires"])
         del _search_cache[oldest]

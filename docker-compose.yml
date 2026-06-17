@@ -27,9 +27,19 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
       - SITE_URL=${SITE_URL:-http://localhost:7890}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_SEARCH_TTL=${REDIS_SEARCH_TTL:-300}
     depends_on:
       - searxng
+      - redis
     restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: aisu-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
 
   searxng:
     image: searxng/searxng:latest
@@ -46,3 +56,4 @@ services:
 volumes:
   aisu_data:
   searxng_data:
+  redis_data:

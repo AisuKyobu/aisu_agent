@@ -118,3 +118,7 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 SITE_URL = os.getenv("SITE_URL", "http://localhost:7890")
+
+# ===== Redis（可选）— 不配置则自动回退到内存实现 =====
+REDIS_URL = os.getenv("REDIS_URL", "")                    # 例: redis://redis:6379/0
+REDIS_SEARCH_TTL = int(os.getenv("REDIS_SEARCH_TTL", "300"))  # 搜索缓存 TTL（秒）
