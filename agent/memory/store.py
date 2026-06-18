@@ -1,6 +1,7 @@
 """Episodic / Semantic / Reflective Memory — SQLite FTS 存储
 
 实现 MemoryProvider 接口，支持 Profile 隔离。
+语义检索优先使用 ChromaDB 向量相似度，不可用时回退 SQLite FTS。
 """
 
 import json
@@ -21,6 +22,16 @@ logger = logging.getLogger("aisu.memory")
 _memory_llm = ChatDeepSeek(model=MODEL_NAME, temperature=0, api_key=DEEPSEEK_API_KEY, api_base=DEEPSEEK_BASE_URL)
 
 
+def _get_vector_store(profile: str = "dev"):
+    """获取 ChromaDB 向量存储实例（懒加载）。"""
+    try:
+        from agent.memory.vector_store import VectorStore
+    except ImportError:
+        return None
+    vs = VectorStore(profile=profile)
+    return vs if vs.available else None
+
+
 class MemoryStore(MemoryProvider):
     name = "builtin"
 
@@ -29,6 +40,7 @@ class MemoryStore(MemoryProvider):
         self._task_count = 0
         self._profile = "dev"
         self._initialized = False
+        self._vector: Optional[object] = None
 
     @property
     def db_path(self) -> str:
@@ -44,8 +56,14 @@ class MemoryStore(MemoryProvider):
         self._conn = sqlite3.connect(path, check_same_thread=False)
         self._run_migrations()
         self._task_count = self._count_tasks()
+        self._vector = _get_vector_store(profile)
+        # 如果向量库可用，把 SQLite 中已有的语义记录补齐
+        if self._vector:
+            self._sync_semantic_to_vector()
         self._initialized = True
-        logger.info("MemoryStore(%s) init: %d tasks in %s", profile, self._task_count, path)
+        logger.info("MemoryStore(%s) init: %d tasks in %s, vector=%s",
+                    profile, self._task_count, path,
+                    "enabled" if self._vector else "disabled")
 
     def prefetch(self, query: str, **kwargs) -> str:
         if not self._initialized:
@@ -214,6 +232,9 @@ class MemoryStore(MemoryProvider):
                 "INSERT INTO semantic VALUES (?,?,?,?,?,?,?,?)",
                 (sid, key, value, source, now, now, 0.7, user_id))
         self._conn.commit()
+        # 同步到向量库
+        if self._vector:
+            self._vector.update(key, value, user_id, source="agent", confidence=0.7)
 
     def _get_semantic_snapshot(self, user_id: str = "guest", limit: int = 10) -> str:
         rows = self._conn.execute(
@@ -224,6 +245,20 @@ class MemoryStore(MemoryProvider):
         return "\n".join(f"- {r[0]}: {r[1]}" for r in rows)
 
     def _search_semantic_internal(self, query: str, user_id: str = "guest") -> str:
+        # 向量语义检索优先
+        if self._vector:
+            results = self._vector.search(query, user_id, k=5)
+            if results:
+                lines = []
+                for r in results:
+                    lines.append(f"- **{r['key']}**: {r['value']}"
+                                 f" (置信: {r['confidence']:.1f}, 相似度: {r['score']:.2f})")
+                self._conn.execute(
+                    "UPDATE semantic SET last_accessed=? WHERE key=? AND user_id=?",
+                    (time.time(), results[0]["key"], user_id))
+                self._conn.commit()
+                return "\n".join(lines)
+        # SQLite LIKE 回退
         terms = [t for t in query.strip().split() if len(t) > 1]
         if not terms:
             return "未找到匹配的记忆"
@@ -325,3 +360,16 @@ class MemoryStore(MemoryProvider):
             return ""
         return "\n".join(
             f"- [反思] {r[0]} (置信: {r[1]:.1f}, 证据: {r[2]}次)" for r in rows)
+
+    def _sync_semantic_to_vector(self):
+        """将 SQLite 中已有的语义记录分批补写入向量库。"""
+        if not self._vector or not self._conn:
+            return
+        try:
+            rows = self._conn.execute(
+                "SELECT key, value, COALESCE(source,''), COALESCE(confidence,0.7),"
+                " COALESCE(user_id,'guest') FROM semantic").fetchall()
+            if rows:
+                self._vector.ensure_synced(rows)
+        except Exception:
+            pass

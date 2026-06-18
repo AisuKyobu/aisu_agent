@@ -122,3 +122,7 @@ SITE_URL = os.getenv("SITE_URL", "http://localhost:7890")
 # ===== Redis（可选）— 不配置则自动回退到内存实现 =====
 REDIS_URL = os.getenv("REDIS_URL", "")                    # 例: redis://redis:6379/0
 REDIS_SEARCH_TTL = int(os.getenv("REDIS_SEARCH_TTL", "300"))  # 搜索缓存 TTL（秒）
+
+# ===== 向量数据库（可选）— 语义记忆升级 =====
+VECTOR_DB_ENABLED = os.getenv("VECTOR_DB_ENABLED", "true").lower() == "true"
+VECTOR_DB_PATH = os.path.join(MEMORY_DIR, "vectors")
