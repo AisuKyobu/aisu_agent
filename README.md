@@ -8,20 +8,21 @@
 | 功能 | 说明 |
 |------|------|
 | 智能对话 | LangGraph 多节点图编排（分析→路由→记忆→Agent→工具→校验→总结） |
-| 网络搜索 | SearXNG 聚合搜索（百度/搜狗），内置缓存 |
+| 网络搜索 | SearXNG 聚合搜索，Redis 缓存 |
 | 浏览器自动化 | Playwright Chromium 驱动，支持打开/点击/输入/截图 |
 | 文件读写 | 沙箱隔离的文件读写，路径自动映射到沙箱目录 |
 | 命令执行 | 白名单 + 危险命令检测 + 用户确认审批 |
 | 技能系统 | 运行时加载 `SKILL.md`，Agent 按需调用，支持 ZIP 安装 |
 | 定时任务 | 周期性执行 Agent 任务，支持单次/重复 |
 | 会话管理 | 多会话，跨会话历史搜索，断点续聊 |
-| 持久记忆 | 基于语义搜索的长期记忆（记忆、反思、情景记录） |
-| 在线反思 | 每 8 步自动检查是否偏离目标，并写入反思记忆 |
-| 用户认证 | 邮箱注册/登录，JWT Token，用户会话隔离 |
+| 持久记忆 | ChromaDB 向量语义检索 + SQLite 三类记忆（语义/情节/反思） |
+| 在线反思 | 每 8 步自动检查是否偏离目标，检测到循环时自动终止 |
+| 用户认证 | 邮箱注册/登录，JWT Token，Celery 异步发送验证邮件 |
 | 权限隔离 | 游客/普通用户/管理员分权；工作区仅管理员可编辑 |
 | 多 Profile | dev（全功能）、qq（受限工具）自动切换 |
 | 监控面板 | 实时查看会话状态、来源、执行模式、工具使用情况 |
 | Web 面板 | FastAPI + Vue 3，含聊天/监控/技能/指令/定时/设置面板 |
+| 分布式限流 | Redis 滑动窗口 IP 限流 + 跨进程搜索缓存 |
 | AstrBot 接入 | QQ 群聊转接，自动切 qq profile |
 | 公开演示模式 | 每 IP 限制 5 条对话，仅开放搜索/读取工具，适合面试展示 |
 
@@ -58,7 +59,11 @@ cp .env.example .env
 ### 3. 构建并启动
 
 ```bash
-docker compose up -d --build
+# 正式环境
+docker compose --profile prod up -d --build
+
+# 演示环境
+docker compose --profile demo up -d --build
 ```
 
 访问 http://localhost:7890
@@ -67,7 +72,7 @@ docker compose up -d --build
 
 ```bash
 git pull
-docker compose up -d --build
+docker compose --profile prod up -d --build     # 或 --profile demo
 ```
 
 ## Docker 公开演示模式（DEMO MODE）
@@ -76,10 +81,8 @@ docker compose up -d --build
 
 ```bash
 # 需要 .env 包含 DEEPSEEK_API_KEY
-# 确保服务器有 docker-compose.yml 所在目录的访问权限
 git pull
-docker compose -f docker-compose.demo.yml build --no-cache aisu
-docker compose -f docker-compose.demo.yml up -d --force-recreate aisu
+docker compose --profile demo up -d --build
 ```
 
 Demo 模式限制：
@@ -120,18 +123,22 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 ## 项目结构
 
 ```
-├── main.py                 入口
-├── config.py               配置（含 DEMO_MODE）
-├── Dockerfile              多阶段构建（node → python）
-├── docker-compose.yml      完整生产部署
-├── docker-compose.demo.yml 公开演示部署
-├── .env.example            环境变量模板
+├── main.py                    入口
+├── config.py                  配置（含 DEMO_MODE / REDIS / 向量库）
+├── Dockerfile                 多阶段构建（node → python）
+├── docker-compose.yml         profiles: prod + demo
+├── .env.example               环境变量模板
 ├── agent/
 │   ├── conversation_graph.py  对话图编排（10 节点 StateGraph）
 │   ├── state.py               状态定义
-│   ├── nodes/                 各节点逻辑（analyzer/router/agent/verifier...）
+│   ├── graph_context.py       LLM 实例 + 工具集上下文
+│   ├── nodes/                 各节点（analyzer/router/agent/verifier/summarizer...）
+│   ├── core/                  反射 / 意图分类 / 调度
 │   ├── skills/                技能注册/发现/执行
-│   ├── memory/                记忆存储与检索
+│   ├── memory/                记忆系统
+│   │   ├── store.py           SQLite 存储
+│   │   ├── vector_store.py    ChromaDB 向量检索
+│   │   └── manager.py         记忆管理编排
 │   ├── cron.py                定时任务管理器
 │   └── session.py             会话持久化
 ├── tools/
@@ -151,7 +158,12 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 │   ├── auth.py                认证（JWT/注册/登录/邮箱验证）
 │   ├── db.py                  用户数据库
 │   ├── state.py               会话状态/WS 广播
-│   └── rate_limit.py          IP 限流（Demo 模式）
+│   ├── rate_limit.py          IP 限流（Redis 优先 + 内存回退）
+│   ├── redis_client.py        Redis 连接管理
+│   ├── celery_app.py          Celery 实例配置
+│   ├── celery_tasks.py        Celery Worker 任务（邮件/清理）
+│   ├── tasks.py               异步任务公共 API（自动回退同步）
+│   └── email.py               SMTP 邮件发送
 ├── web/                       Vue 3 前端
 │   └── src/
 │       ├── App.vue            主页面（Tab 切换 + Demo Banner）
@@ -176,15 +188,11 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 | `SMTP_USER` | 否 | - | 邮箱账号 |
 | `SMTP_PASSWORD` | 否 | - | 邮箱密码/授权码 |
 | `SITE_URL` | 否 | `http://localhost:7890` | 站点 URL（用于邮件链接） |
+| `REDIS_URL` | 否 | `redis://redis:6379/0` | Redis 地址（限流/缓存/Celery broker） |
+| `REDIS_SEARCH_TTL` | 否 | `300` | 搜索缓存 TTL（秒） |
+| `VECTOR_DB_ENABLED` | 否 | `true` | 启用 ChromaDB 向量语义记忆 |
 | `DEMO_MODE` | 否 | `false` | 开启公开演示模式 |
 | `DEMO_MAX_MSG_PER_IP` | 否 | `5` | Demo 模式每 IP 最大对话数 |
+| `DEMO_WINDOW_SECONDS` | 否 | `86400` | Demo 模式限流窗口（秒） |
 | `SANDBOX_MODE` | 否 | `host` | 沙箱模式（host/docker） |
 | `LANGCHAIN_API_KEY` | 否 | - | LangSmith 可观测性 |
-
-## 最近更新
-
-- 新增在线反思系统：普通对话无 `task_graph` 时，自动以最近用户消息为目标进行自省。
-- UI  redesigned：加深背景渐变、粉青双 accent、WelcomeCard 入职引导、工具卡片、代码复制按钮。
-- 工作区权限细化：登录用户可查看全部文件，仅管理员可编辑。
-- 监控面板支持游客访问，并按用户身份隔离会话可见范围。
-- 移除旧 Jinja2 模板与 static 前端资源，统一使用 Vue 3 构建产物。
