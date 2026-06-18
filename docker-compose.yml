@@ -1,5 +1,16 @@
+# Aisu Agent — Docker Compose (profiles 版)
+# ==========================================
+# 启动正式环境: docker compose --profile prod up -d --build
+# 启动演示环境: docker compose --profile demo up -d --build
+# 同时启动两套: docker compose --profile prod --profile demo up -d --build
+
 services:
+  # ═══════════════════════════════════════════
+  #  正式环境 (profile: prod)
+  # ═══════════════════════════════════════════
+
   aisu:
+    profiles: ["prod"]
     build: .
     container_name: aisu
     shm_size: "256m"
@@ -14,7 +25,7 @@ services:
       - SANDBOX_MODE=host
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
-      - SEARXNG_BASE_URL=http://searxng:8080
+      - SEARXNG_BASE_URL=http://searxng-prod:8080
       - PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/chromium/chrome-linux64/chrome
       - MODEL_NAME=${MODEL_NAME:-deepseek-chat}
       - DATA_DIR=/app/data
@@ -27,14 +38,15 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
       - SITE_URL=${SITE_URL:-http://localhost:7890}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_URL=${REDIS_URL:-redis://redis-prod:6379/0}
       - REDIS_SEARCH_TTL=${REDIS_SEARCH_TTL:-300}
     depends_on:
-      - searxng
-      - redis
+      - searxng-prod
+      - redis-prod
     restart: unless-stopped
 
   celery-worker:
+    profiles: ["prod"]
     build: .
     container_name: aisu-celery-worker
     volumes:
@@ -42,7 +54,7 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - DATA_DIR=/app/data
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_URL=${REDIS_URL:-redis://redis-prod:6379/0}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
       - MODEL_NAME=${MODEL_NAME:-deepseek-chat}
@@ -54,10 +66,11 @@ services:
       - MEMORY_DIR=/app/data/memory
     command: celery -A server.celery_tasks worker -Q email,celery -l info --concurrency=2
     depends_on:
-      - redis
+      - redis-prod
     restart: unless-stopped
 
   celery-beat:
+    profiles: ["prod"]
     build: .
     container_name: aisu-celery-beat
     volumes:
@@ -65,24 +78,26 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - DATA_DIR=/app/data
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_URL=${REDIS_URL:-redis://redis-prod:6379/0}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
       - MODEL_NAME=${MODEL_NAME:-deepseek-chat}
       - MEMORY_DIR=/app/data/memory
     command: celery -A server.celery_tasks beat -l info
     depends_on:
-      - redis
+      - redis-prod
     restart: unless-stopped
 
-  redis:
+  redis-prod:
+    profiles: ["prod"]
     image: redis:7-alpine
     container_name: aisu-redis
     restart: unless-stopped
     volumes:
       - redis_data:/data
 
-  searxng:
+  searxng-prod:
+    profiles: ["prod"]
     image: searxng/searxng:latest
     container_name: searxng
     ports:
@@ -94,7 +109,108 @@ services:
       - SEARXNG_BASE_URL=http://localhost:8889
     restart: unless-stopped
 
+  # ═══════════════════════════════════════════
+  #  演示环境 (profile: demo)
+  # ═══════════════════════════════════════════
+
+  aisu-demo:
+    profiles: ["demo"]
+    build: .
+    container_name: aisu-demo
+    shm_size: "256m"
+    ports:
+      - "7890:7890"
+    volumes:
+      - aisu_demo_data:/app/data
+    environment:
+      - TZ=Asia/Shanghai
+      - SANDBOX_MODE=host
+      - DEMO_MODE=true
+      - DEMO_MAX_MSG_PER_IP=5
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
+      - SEARXNG_BASE_URL=http://searxng-demo:8080
+      - DATA_DIR=/app/data
+      - SITE_URL=${SITE_URL:-http://localhost:7890}
+      - MODEL_NAME=${MODEL_NAME:-deepseek-chat}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-465}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - REDIS_URL=${REDIS_URL:-redis://redis-demo:6379/0}
+      - REDIS_SEARCH_TTL=${REDIS_SEARCH_TTL:-300}
+    depends_on:
+      - searxng-demo
+      - redis-demo
+    restart: unless-stopped
+
+  celery-worker-demo:
+    profiles: ["demo"]
+    build: .
+    container_name: aisu-celery-demo-worker
+    volumes:
+      - aisu_demo_data:/app/data
+    environment:
+      - TZ=Asia/Shanghai
+      - DATA_DIR=/app/data
+      - REDIS_URL=${REDIS_URL:-redis://redis-demo:6379/0}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
+      - MODEL_NAME=${MODEL_NAME:-deepseek-chat}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-465}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SITE_URL=${SITE_URL:-http://localhost:7890}
+      - MEMORY_DIR=/app/data/memory
+    command: celery -A server.celery_tasks worker -Q email,celery -l info --concurrency=2
+    depends_on:
+      - redis-demo
+    restart: unless-stopped
+
+  celery-beat-demo:
+    profiles: ["demo"]
+    build: .
+    container_name: aisu-celery-demo-beat
+    volumes:
+      - aisu_demo_data:/app/data
+    environment:
+      - TZ=Asia/Shanghai
+      - DATA_DIR=/app/data
+      - REDIS_URL=${REDIS_URL:-redis://redis-demo:6379/0}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
+      - MODEL_NAME=${MODEL_NAME:-deepseek-chat}
+      - MEMORY_DIR=/app/data/memory
+    command: celery -A server.celery_tasks beat -l info
+    depends_on:
+      - redis-demo
+    restart: unless-stopped
+
+  redis-demo:
+    profiles: ["demo"]
+    image: redis:7-alpine
+    container_name: aisu-redis-demo
+    restart: unless-stopped
+    volumes:
+      - redis_demo_data:/data
+
+  searxng-demo:
+    profiles: ["demo"]
+    image: searxng/searxng:latest
+    container_name: searxng-demo
+    ports:
+      - "8889:8080"
+    volumes:
+      - searxng_data:/etc/searxng
+    environment:
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-changeme123456789}
+      - SEARXNG_BASE_URL=http://localhost:8889
+    restart: unless-stopped
+
 volumes:
   aisu_data:
+  aisu_demo_data:
   searxng_data:
   redis_data:
+  redis_demo_data:
