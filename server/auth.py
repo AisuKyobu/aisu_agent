@@ -122,8 +122,8 @@ async def register(request: Request):
 
     token = secrets.token_urlsafe(32)
     create_verification_token(user["id"], token, "verify_email")
-    from server.email import send_verification_email
-    email_sent = send_verification_email(email, user["username"], token)
+    from server.tasks import send_verification_email_async
+    email_sent = send_verification_email_async(email, user["username"], token)
     if not email_sent:
         logger.warning("Failed to send verification email to %s", email)
         return {"ok": True, "need_verify": True,

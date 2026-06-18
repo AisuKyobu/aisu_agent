@@ -766,6 +766,16 @@ async def demo_status(request: Request):
     }
 
 
+@app.get("/api/tasks/{task_id}")
+async def task_status(task_id: str):
+    """查询 Celery 异步任务状态。"""
+    from server.tasks import get_task_status
+    result = get_task_status(task_id)
+    if result is None:
+        return {"ok": False, "error": "任务系统不可用（Redis 未配置）"}
+    return {"ok": True, **result}
+
+
 # ── Cron ──
 
 @app.get("/api/cron")
