@@ -1,7 +1,7 @@
 """Episodic / Semantic / Reflective Memory — SQLite FTS 存储
 
 实现 MemoryProvider 接口，支持 Profile 隔离。
-语义检索优先使用 ChromaDB 向量相似度，不可用时回退 SQLite FTS。
+三类记忆均优先使用 ChromaDB 向量相似度检索，不可用时回退 SQLite。
 """
 
 import json
@@ -57,9 +57,9 @@ class MemoryStore(MemoryProvider):
         self._run_migrations()
         self._task_count = self._count_tasks()
         self._vector = _get_vector_store(profile)
-        # 如果向量库可用，把 SQLite 中已有的语义记录补齐
+        # 如果向量库可用，把 SQLite 中已有的三类记忆补齐到向量库
         if self._vector:
-            self._sync_semantic_to_vector()
+            self._sync_to_vector()
         self._initialized = True
         logger.info("MemoryStore(%s) init: %d tasks in %s, vector=%s",
                     profile, self._task_count, path,
@@ -192,8 +192,35 @@ class MemoryStore(MemoryProvider):
             (eid, task_id, goal, content))
         self._conn.commit()
         self._task_count += 1
+        # 同步到向量库
+        if self._vector:
+            self._vector.add_episode(task_id, goal, summary, outcome, time.time())
 
     def _search_similar_internal(self, goal: str, k: int = 3) -> List[dict]:
+        # 向量语义检索优先
+        if self._vector:
+            vector_results = self._vector.search_episodes(goal, k=k)
+            if vector_results:
+                results = []
+                for item in vector_results:
+                    task_id = item.get("task_id", "")
+                    if not task_id:
+                        continue
+                    ep = self._conn.execute(
+                        "SELECT goal, steps_json, outcome, summary, created_at "
+                        "FROM episodic WHERE task_id=? ORDER BY created_at DESC LIMIT 1",
+                        (task_id,)).fetchone()
+                    if ep:
+                        results.append({
+                            "task_id": task_id, "goal": ep[0],
+                            "steps": json.loads(ep[1]) if ep[1] else [],
+                            "outcome": ep[2], "summary": ep[3],
+                            "created_at": datetime.fromtimestamp(ep[4]).strftime("%m-%d %H:%M"),
+                            "_score": item.get("score", 0),
+                        })
+                if results:
+                    return results
+        # SQLite FTS5 回退
         try:
             rows = self._conn.execute(
                 "SELECT task_id, goal, content, rank FROM episodic_fts "
@@ -331,6 +358,9 @@ class MemoryStore(MemoryProvider):
                             "INSERT INTO reflective VALUES (?,?,?,?,?)",
                             (rid, pattern, 1, 0.3, time.time()))
             self._conn.commit()
+            # 同步到向量库
+            if self._vector and pattern:
+                self._vector.add_reflection(pattern)
         except Exception:
             pass
 
@@ -351,6 +381,9 @@ class MemoryStore(MemoryProvider):
                 "INSERT INTO reflective VALUES (?,?,?,?,?)",
                 (rid, pattern, 1, confidence, time.time()))
         self._conn.commit()
+        # 同步到向量库
+        if self._vector:
+            self._vector.add_reflection(pattern, confidence)
 
     def _get_reflections_internal(self) -> str:
         rows = self._conn.execute(
@@ -361,15 +394,27 @@ class MemoryStore(MemoryProvider):
         return "\n".join(
             f"- [反思] {r[0]} (置信: {r[1]:.1f}, 证据: {r[2]}次)" for r in rows)
 
-    def _sync_semantic_to_vector(self):
-        """将 SQLite 中已有的语义记录分批补写入向量库。"""
+    def _sync_to_vector(self):
+        """将 SQLite 中已有的三类记忆分批补写入向量库。"""
         if not self._vector or not self._conn:
             return
         try:
+            # 语义记忆
             rows = self._conn.execute(
                 "SELECT key, value, COALESCE(source,''), COALESCE(confidence,0.7),"
                 " COALESCE(user_id,'guest') FROM semantic").fetchall()
             if rows:
                 self._vector.ensure_synced(rows)
+            # 情节记忆
+            ep_rows = self._conn.execute(
+                "SELECT task_id, goal, COALESCE(summary,''), COALESCE(outcome,''),"
+                " created_at FROM episodic").fetchall()
+            if ep_rows:
+                self._vector.ensure_episodes_synced(ep_rows)
+            # 反思记忆
+            ref_rows = self._conn.execute(
+                "SELECT pattern, confidence, evidence_count FROM reflective").fetchall()
+            if ref_rows:
+                self._vector.ensure_reflections_synced(ref_rows)
         except Exception:
             pass
